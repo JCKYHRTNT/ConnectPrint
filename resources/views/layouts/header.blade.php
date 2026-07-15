@@ -1,0 +1,275 @@
+<style>
+    .tb-category-dropdown {
+        display: grid;
+        grid-auto-flow: column;
+        grid-template-rows: repeat(5, auto);
+        padding-top: 0.25rem;
+        padding-bottom: 0.25rem;
+    }
+
+    .tb-category-dropdown .dropdown-item {
+        white-space: nowrap;
+    }
+</style>
+
+<header class="tb-header-fixed">
+    <div class="tb-container">
+        @php
+            use Illuminate\Support\Str;
+
+            $loggedIn = session('user_id') !== null;
+            $userSlug = $loggedIn ? Str::slug(session('name')) : null;
+            $isAdmin  = $loggedIn && session('role') === 'admin';
+
+            $onAdminContext = request()->is('a/*');
+            $onUserContext  = request()->is('u/*');
+
+            if ($onAdminContext && $loggedIn && $userSlug) {
+                $searchBaseUrl = url('/a/'.$userSlug);
+            } elseif ($onUserContext && $loggedIn && $userSlug) {
+                $searchBaseUrl = url('/u/'.$userSlug);
+            } else {
+                $searchBaseUrl = url('/');
+            }
+
+            if ($loggedIn && $userSlug) {
+                if ($onUserContext) {
+                    $logoHref = route('home.user', ['username' => $userSlug]);
+                } elseif ($onAdminContext) {
+                    $logoHref = route('admin.user', ['username' => $userSlug]);
+                } else {
+                    $logoHref = $isAdmin
+                        ? route('admin.user', ['username' => $userSlug])
+                        : route('home.user', ['username' => $userSlug]);
+                }
+            } else {
+                // guest
+                $logoHref = route('home');
+            }
+        @endphp
+
+        {{-- Logo --}}
+        <a href="{{ $logoHref }}" class="d-inline-flex align-items-center" style="gap:0.5rem;">
+            <img
+                src="{{ asset('images/placeholders/blank-logo.svg') }}"
+                alt="ConnectPrint"
+                style="height:42px;width:auto;border-radius:0.4rem;object-fit:cover;background:#0f172a;"
+            >
+        </a>
+
+        <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:0.75rem;">
+
+            {{-- LEFT: Search + Filter --}}
+            <div class="d-flex flex-grow-1 align-items-center" style="gap:0.5rem;max-width:620px;min-width:260px;">
+
+                {{-- Search --}}
+                <form action="{{ $searchBaseUrl }}" method="GET" class="d-flex flex-grow-1" style="gap:0.4rem;">
+                    @if(request('category'))
+                        <input type="hidden" name="category" value="{{ request('category') }}">
+                    @endif
+
+                    <input
+                        type="text"
+                        name="q"
+                        value="{{ request('q') }}"
+                        class="tb-input-rounded"
+                        placeholder="Search artworks..."
+                        style="
+                            padding-left:1rem;
+                            width: 480px;
+                            max-width: 100%;
+                        "
+                    >
+
+                    <button type="submit" class="tb-btn-primary d-inline-flex align-items-center">
+                        <img
+                            src="{{ asset('images/search_icon.png') }}"
+                            alt="Search"
+                            style="height:15px;width:15px;opacity:0.9;margin-right:0.3rem;"
+                        >
+                    </button>
+                </form>
+
+                {{-- Filter --}}
+                @php
+                    $showFilter = request()->routeIs(
+                        'home',
+                        'home.user',
+                        'admin.user',
+                        'cart'
+                    );
+
+                    $clearCategoryUrl = request('q')
+                        ? $searchBaseUrl.'?q='.urlencode(request('q'))
+                        : $searchBaseUrl;
+                @endphp
+
+                @if($showFilter)
+                    <div class="dropdown">
+                        <button
+                            type="button"
+                            class="tb-pill-link dropdown-toggle d-inline-flex align-items-center"
+                            id="filterDropdown"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            style="border:1px solid rgba(148,163,184,0.5);white-space:nowrap;"
+                        >
+                            <img
+                                src="{{ asset('images/filter_icon.png') }}"
+                                alt="Filter"
+                                style="height:16px;width:16px;opacity:0.85;margin-right:0.35rem;"
+                            >
+                            Categories
+                        </button>
+
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="filterDropdown">
+                            @if(request('category'))
+                                <li>
+                                    <a class="dropdown-item text-danger fw-semibold" href="{{ $clearCategoryUrl }}">
+                                        Clear
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                            @endif
+
+                            <li>
+                                <div class="tb-category-dropdown">
+                                    @foreach(($categories ?? []) as $cat)
+                                        @php
+                                            $queryString = request('q') ? '&q=' . urlencode(request('q')) : '';
+                                            $catUrl      = $searchBaseUrl.'?category='.$cat['id'].$queryString;
+                                        @endphp
+
+                                        <a class="dropdown-item" href="{{ $catUrl }}">
+                                            {{ ucfirst($cat['name']) }}
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                @endif
+            </div>
+
+            {{-- RIGHT: Navbar --}}
+            <nav class="d-flex flex-wrap align-items-center justify-content-end" style="gap:0.4rem;">
+
+                {{-- HOME --}}
+                @if($loggedIn)
+                    @if($onAdminContext)
+                        <a href="{{ route('admin.user', ['username' => $userSlug]) }}"
+                        class="tb-pill-link d-inline-flex align-items-center"
+                        style="gap:0.35rem;">
+                            <img src="{{ asset('images/home_icon.png') }}" alt="Home" style="height:16px;width:16px;opacity:0.85;">
+                            Home
+                        </a>
+                    @elseif($onUserContext)
+                        <a href="{{ route('home.user', ['username' => $userSlug]) }}"
+                        class="tb-pill-link d-inline-flex align-items-center"
+                        style="gap:0.35rem;">
+                            <img src="{{ asset('images/home_icon.png') }}" alt="Home" style="height:16px;width:16px;opacity:0.85;">
+                            Home
+                        </a>
+                    @else
+                        @if($isAdmin)
+                            <a href="{{ route('admin.user', ['username' => $userSlug]) }}"
+                            class="tb-pill-link d-inline-flex align-items-center"
+                            style="gap:0.35rem;">
+                                <img src="{{ asset('images/home_icon.png') }}" alt="Home" style="height:16px;width:16px;opacity:0.85;">
+                                Home
+                            </a>
+                        @else
+                            <a href="{{ route('home.user', ['username' => $userSlug]) }}"
+                            class="tb-pill-link d-inline-flex align-items-center"
+                            style="gap:0.35rem;">
+                                <img src="{{ asset('images/home_icon.png') }}" alt="Home" style="height:16px;width:16px;opacity:0.85;">
+                                Home
+                            </a>
+                        @endif
+                    @endif
+                @else
+                    <a href="{{ route('home') }}"
+                    class="tb-pill-link d-inline-flex align-items-center"
+                    style="gap:0.35rem;">
+                        <img src="{{ asset('images/home_icon.png') }}" alt="Home" style="height:16px;width:16px;opacity:0.85;">
+                        Home
+                    </a>
+                @endif
+
+                {{-- ADMIN --}}
+                @if($loggedIn && $isAdmin && str_starts_with(Route::currentRouteName(), 'admin.'))
+                    <a href="{{ route('admin.crud', ['username' => $userSlug]) }}"
+                    class="tb-pill-link d-inline-flex align-items-center"
+                    style="gap:0.35rem;">
+                        <img src="{{ asset('images/admin_icon.png') }}"
+                            alt="Admin"
+                            style="height:16px;width:16px;opacity:0.85;">
+                        Admin
+                    </a>
+                @endif
+
+                @if($loggedIn && $onUserContext)
+                    <a href="{{ route('artworks.index', ['username' => $userSlug]) }}" class="tb-pill-link d-inline-flex align-items-center" style="gap:0.35rem;">
+                        Own Images
+                    </a>
+                    <a href="{{ route('artworks.create', ['username' => $userSlug]) }}" class="tb-pill-link d-inline-flex align-items-center" style="gap:0.35rem;">
+                        Upload
+                    </a>
+                    <a href="{{ route('purchases.library', ['username' => $userSlug]) }}" class="tb-pill-link d-inline-flex align-items-center" style="gap:0.35rem;">
+                        Bought Files
+                    </a>
+                    <a href="{{ route('notifications.index', ['username' => $userSlug]) }}" class="tb-pill-link d-inline-flex align-items-center" style="gap:0.35rem;">
+                        Notifications
+                    </a>
+                @endif
+
+                <a href="{{ route('printbox') }}" class="tb-pill-link d-inline-flex align-items-center" style="gap:0.35rem;">
+                    Printbox
+                </a>
+
+                {{-- CART --}}
+                @if($loggedIn && $onUserContext)
+                    <a href="{{ route('cart', ['username' => $userSlug]) }}"
+                    class="tb-pill-link d-inline-flex align-items-center"
+                    style="gap:0.35rem;">
+                        <img src="{{ asset('images/cart_icon.png') }}" alt="Cart" style="height:16px;width:16px;opacity:0.85;">
+                        Cart
+                    </a>
+                @elseif(!$loggedIn)
+                    <a href="{{ route('cart.redirect') }}"
+                    class="tb-pill-link d-inline-flex align-items-center"
+                    style="gap:0.35rem;">
+                        <img src="{{ asset('images/cart_icon.png') }}" alt="Cart" style="height:16px;width:16px;opacity:0.85;">
+                        Cart
+                    </a>
+                @endif
+
+                {{-- ACCOUNT / LOGIN --}}
+                @if($loggedIn)
+                    @if($onAdminContext)
+                        <a href="{{ route('account.admin', ['username' => $userSlug]) }}"
+                        class="tb-pill-link d-inline-flex align-items-center"
+                        style="gap:0.35rem;">
+                            <img src="{{ asset('images/account_icon.png') }}" alt="Account" style="height:16px;width:16px;opacity:0.85;">
+                            Profile
+                        </a>
+                    @else
+                        <a href="{{ route('account', ['username' => $userSlug]) }}"
+                        class="tb-pill-link d-inline-flex align-items-center"
+                        style="gap:0.35rem;">
+                            <img src="{{ asset('images/account_icon.png') }}" alt="Account" style="height:16px;width:16px;opacity:0.85;">
+                            Profile
+                        </a>
+                    @endif
+                @else
+                    <a href="{{ route('login') }}"
+                    class="tb-pill-link d-inline-flex align-items-center"
+                    style="gap:0.35rem;">
+                        <img src="{{ asset('images/account_icon.png') }}" alt="Login" style="height:16px;width:16px;opacity:0.85;">
+                        Login
+                    </a>
+                @endif
+            </nav>
+        </div>
+    </div>
+</header>
