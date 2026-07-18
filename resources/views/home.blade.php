@@ -38,10 +38,10 @@
 </section>
 
 <section class="tb-card p-3 mb-3">
-    <form method="GET" action="{{ $categoryBaseRoute }}" class="row g-2 align-items-end">
+    <form method="GET" action="{{ $categoryBaseRoute }}" class="row g-2 align-items-end" id="marketplaceFilterForm">
         <div class="col-md-4">
             <label class="form-label">Search</label>
-            <input class="form-control" name="q" value="{{ request('q') }}" placeholder="Title, creator, or tag">
+            <input class="form-control" name="q" value="{{ request('q') }}" placeholder="Title, creator, or tag" data-filter-autosubmit="debounced">
         </div>
         <div class="col-md-3">
             <label class="form-label d-block">Category</label>
@@ -76,7 +76,7 @@
                         @endforeach
                     </div>
                     <div class="d-flex gap-2 pt-2">
-                        <button class="btn btn-primary btn-sm" type="submit">Apply</button>
+                        <button class="btn btn-primary btn-sm" type="submit">Apply all</button>
                         <a class="btn btn-outline-secondary btn-sm" href="{{ $clearCategoryUrl }}">Clear</a>
                     </div>
                 </div>
@@ -84,7 +84,7 @@
         </div>
         <div class="col-md-2">
             <label class="form-label">Type</label>
-            <select class="form-select" name="printable">
+            <select class="form-select" name="printable" data-filter-autosubmit="instant">
                 <option value="">All</option>
                 <option value="printable" @selected(request('printable') === 'printable')>Printable</option>
                 <option value="display" @selected(request('printable') === 'display')>Display only</option>
@@ -92,14 +92,11 @@
         </div>
         <div class="col-md-2">
             <label class="form-label">Sort</label>
-            <select class="form-select" name="sort">
+            <select class="form-select" name="sort" data-filter-autosubmit="instant">
                 <option value="">Newest</option>
                 <option value="price_asc" @selected(request('sort') === 'price_asc')>Price low</option>
                 <option value="price_desc" @selected(request('sort') === 'price_desc')>Price high</option>
             </select>
-        </div>
-        <div class="col-md-1">
-            <button class="tb-btn-primary w-100" type="submit">Filter</button>
         </div>
     </form>
 </section>
@@ -131,4 +128,31 @@
         <div class="mt-3">{{ $artworks->links() }}</div>
     @endif
 </section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('marketplaceFilterForm');
+
+        if (!form) {
+            return;
+        }
+
+        let debounceTimer = null;
+
+        function submitFilter() {
+            form.requestSubmit();
+        }
+
+        form.querySelectorAll('[data-filter-autosubmit="debounced"]').forEach(function (input) {
+            input.addEventListener('input', function () {
+                window.clearTimeout(debounceTimer);
+                debounceTimer = window.setTimeout(submitFilter, 400);
+            });
+        });
+
+        form.querySelectorAll('[data-filter-autosubmit="instant"]').forEach(function (input) {
+            input.addEventListener('change', submitFilter);
+        });
+    });
+</script>
 @endsection
