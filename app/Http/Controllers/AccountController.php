@@ -11,9 +11,9 @@ use Illuminate\Support\Facades\Hash;
 class AccountController extends Controller
 {
     /**
-     * User account page: /u/{username}/account
+     * User account page: /account
      */
-    public function userAccount(Request $request, string $username)
+    public function userAccount(Request $request, ?string $username = null)
     {
         if (!session('user_id')) {
             return redirect()->route('login')->with('error', 'Please login first.');
@@ -22,8 +22,8 @@ class AccountController extends Controller
         $user         = User::findOrFail(session('user_id'));
         $expectedSlug = $user->slug;
 
-        if ($username !== $expectedSlug) {
-            return redirect()->route('account', ['username' => $expectedSlug]);
+        if ($username !== null && $username !== $expectedSlug) {
+            return redirect()->route('account');
         }
 
         return view('account', $this->accountViewData($user, false, $request));
@@ -51,7 +51,7 @@ class AccountController extends Controller
     /**
      * Update account (name + email, password confirmation).
      */
-    public function update(Request $request, string $username)
+    public function update(Request $request, ?string $username = null)
     {
         if (!session('user_id')) {
             return redirect()->route('login')->with('error', 'Please login first.');
@@ -60,10 +60,11 @@ class AccountController extends Controller
         $user         = User::findOrFail(session('user_id'));
         $expectedSlug = $user->slug;
 
-        if ($username !== $expectedSlug) {
+        if ($username !== null && $username !== $expectedSlug) {
             $baseRoute = $request->routeIs('account.admin.update') ? 'account.admin' : 'account';
+            $routeParams = $baseRoute === 'account.admin' ? ['username' => $expectedSlug] : [];
 
-            return redirect()->route($baseRoute, ['username' => $expectedSlug]);
+            return redirect()->route($baseRoute, $routeParams);
         }
 
         $data = $request->validate([
@@ -86,15 +87,17 @@ class AccountController extends Controller
         $newSlug   = $user->slug;
         $baseRoute = $request->routeIs('account.admin.update') ? 'account.admin' : 'account';
 
+        $routeParams = $baseRoute === 'account.admin' ? ['username' => $newSlug] : [];
+
         return redirect()
-            ->route($baseRoute, ['username' => $newSlug])
+            ->route($baseRoute, $routeParams)
             ->with('success', 'Account updated.');
     }
 
     /**
      * Delete account (password confirmation).
      */
-    public function destroy(Request $request, string $username)
+    public function destroy(Request $request, ?string $username = null)
     {
         if (!session('user_id')) {
             return redirect()->route('login')->with('error', 'Please login first.');
@@ -103,10 +106,12 @@ class AccountController extends Controller
         $user         = User::findOrFail(session('user_id'));
         $expectedSlug = $user->slug;
 
-        if ($username !== $expectedSlug) {
+        if ($username !== null && $username !== $expectedSlug) {
             $baseRoute = $request->routeIs('account.admin.delete') ? 'account.admin' : 'account';
 
-            return redirect()->route($baseRoute, ['username' => $expectedSlug]);
+            $routeParams = $baseRoute === 'account.admin' ? ['username' => $expectedSlug] : [];
+
+            return redirect()->route($baseRoute, $routeParams);
         }
 
         $data = $request->validate([

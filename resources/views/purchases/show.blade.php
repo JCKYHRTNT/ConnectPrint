@@ -2,8 +2,6 @@
 
 @section('title', $purchase->purchase_number . ' - ConnectPrint')
 
-@php use Illuminate\Support\Str; @endphp
-
 @section('content')
 <div class="tb-card p-4">
     @if(session('success')) <div class="alert alert-success">{{ session('success') }}</div> @endif
@@ -17,7 +15,7 @@
             </div>
             <div class="text-muted small">Creator: {{ $item->creator_name_snapshot }}</div>
             @if($item->artwork)
-                <a class="btn btn-outline-primary btn-sm mt-2" href="{{ route('artworks.print-file', ['username' => Str::slug(session('name')), 'artwork' => $item->artwork_id]) }}">Open print-ready file</a>
+                <a class="btn btn-outline-primary btn-sm mt-2" href="{{ route('artworks.print-file', ['username' => $purchase->user->slug, 'artwork' => $item->product_id]) }}">Open print-ready file</a>
             @endif
         </div>
     @endforeach

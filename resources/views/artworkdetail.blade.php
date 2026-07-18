@@ -53,7 +53,7 @@
                 @elseif(! $artwork->is_printable)
                     <button class="btn btn-secondary btn-sm" disabled>Display only - printing is not permitted</button>
                 @elseif($canPurchase)
-                    <form method="POST" action="{{ route('cart.add', ['username' => $userSlug, 'artwork' => $artwork->id]) }}">
+                    <form method="POST" action="{{ route('cart.add', ['artwork' => $artwork->id]) }}">
                         @csrf
                         <button class="tb-btn-primary" type="submit">Add printable access to cart</button>
                     </form>

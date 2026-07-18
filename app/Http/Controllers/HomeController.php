@@ -15,9 +15,14 @@ class HomeController extends Controller
      */
     public function home(Request $request)
     {
-        $categoryId = $request->filled('category')
-            ? (int) $request->input('category')
-            : null;
+        $categoryIds = collect((array) $request->input('category', []))
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $categoryId = $categoryIds->first();
 
         $query = $request->input('q');
 
@@ -34,8 +39,8 @@ class HomeController extends Controller
             ->whereNull('archived_at');
 
         // FILTER BY CATEGORY
-        if (!is_null($categoryId)) {
-            $artworksQuery->where('category_id', $categoryId);
+        if ($categoryIds->isNotEmpty()) {
+            $artworksQuery->whereIn('category_id', $categoryIds->all());
         }
 
         // FILTER BY SEARCH
@@ -96,6 +101,7 @@ class HomeController extends Controller
         return view('home', [
             'artworks'         => $artworks,
             'categoryId'       => $categoryId,
+            'categoryIds'      => $categoryIds->all(),
             'query'            => $query,
             'recentCategories' => $recentCategories,
             'categories'       => $categories,
@@ -108,9 +114,9 @@ class HomeController extends Controller
     }
 
     /**
-     * User home: /u/{username}
+     * User home: /home
      */
-    public function homeForUser(Request $request, string $username)
+    public function homeForUser(Request $request, ?string $username = null)
     {
         if (!session('user_id')) {
             return redirect()->route('login');
@@ -120,10 +126,8 @@ class HomeController extends Controller
         $expectedSlug = Str::slug($sessionName);
 
         // Prevent accessing another user’s URL
-        if ($username !== $expectedSlug) {
-            return redirect()->route('home.user', [
-                'username' => $expectedSlug,
-            ] + $request->query());
+        if ($username !== null && $username !== $expectedSlug) {
+            return redirect()->route('home.user', $request->query());
         }
 
         return $this->home($request);

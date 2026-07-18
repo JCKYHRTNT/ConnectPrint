@@ -1,13 +1,16 @@
 <style>
     .tb-category-dropdown {
-        display: grid;
-        grid-auto-flow: column;
-        grid-template-rows: repeat(5, auto);
-        padding-top: 0.25rem;
-        padding-bottom: 0.25rem;
+        max-height: 13rem;
+        min-width: 14rem;
+        overflow-y: auto;
+        padding: 0.25rem 0.75rem;
     }
 
-    .tb-category-dropdown .dropdown-item {
+    .tb-category-option {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.35rem 0;
         white-space: nowrap;
     }
 </style>
@@ -23,24 +26,28 @@
 
             $onAdminContext = request()->is('a/*');
             $onUserContext  = request()->is('u/*');
+            $selectedCategories = collect((array) request('category'))
+                ->filter(fn ($id) => $id !== null && $id !== '')
+                ->map(fn ($id) => (int) $id)
+                ->all();
 
             if ($onAdminContext && $loggedIn && $userSlug) {
                 $searchBaseUrl = url('/a/'.$userSlug);
-            } elseif ($onUserContext && $loggedIn && $userSlug) {
-                $searchBaseUrl = url('/u/'.$userSlug);
+            } elseif ($loggedIn) {
+                $searchBaseUrl = route('home.user');
             } else {
                 $searchBaseUrl = url('/');
             }
 
             if ($loggedIn && $userSlug) {
                 if ($onUserContext) {
-                    $logoHref = route('home.user', ['username' => $userSlug]);
+                    $logoHref = route('home.user');
                 } elseif ($onAdminContext) {
                     $logoHref = route('admin.user', ['username' => $userSlug]);
                 } else {
                     $logoHref = $isAdmin
                         ? route('admin.user', ['username' => $userSlug])
-                        : route('home.user', ['username' => $userSlug]);
+                        : route('home.user');
                 }
             } else {
                 // guest
@@ -64,9 +71,9 @@
 
                 {{-- Search --}}
                 <form action="{{ $searchBaseUrl }}" method="GET" class="d-flex flex-grow-1" style="gap:0.4rem;">
-                    @if(request('category'))
-                        <input type="hidden" name="category" value="{{ request('category') }}">
-                    @endif
+                    @foreach($selectedCategories as $selectedCategory)
+                        <input type="hidden" name="category[]" value="{{ $selectedCategory }}">
+                    @endforeach
 
                     <input
                         type="text"
@@ -122,29 +129,33 @@
                             Categories
                         </button>
 
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="filterDropdown">
-                            @if(request('category'))
-                                <li>
-                                    <a class="dropdown-item text-danger fw-semibold" href="{{ $clearCategoryUrl }}">
-                                        Clear
-                                    </a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                            @endif
-
+                        <ul class="dropdown-menu dropdown-menu-end p-2" aria-labelledby="filterDropdown">
                             <li>
-                                <div class="tb-category-dropdown">
-                                    @foreach(($categories ?? []) as $cat)
-                                        @php
-                                            $queryString = request('q') ? '&q=' . urlencode(request('q')) : '';
-                                            $catUrl      = $searchBaseUrl.'?category='.$cat['id'].$queryString;
-                                        @endphp
+                                <form method="GET" action="{{ $searchBaseUrl }}">
+                                    @if(request('q'))
+                                        <input type="hidden" name="q" value="{{ request('q') }}">
+                                    @endif
 
-                                        <a class="dropdown-item" href="{{ $catUrl }}">
-                                            {{ ucfirst($cat['name']) }}
-                                        </a>
-                                    @endforeach
-                                </div>
+                                    <div class="tb-category-dropdown">
+                                        @foreach(($categories ?? []) as $cat)
+                                            <label class="tb-category-option">
+                                                <input
+                                                    class="form-check-input m-0"
+                                                    type="checkbox"
+                                                    name="category[]"
+                                                    value="{{ $cat['id'] }}"
+                                                    @checked(in_array((int) $cat['id'], $selectedCategories, true))
+                                                >
+                                                <span>{{ ucfirst($cat['name']) }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+
+                                    <div class="d-flex gap-2 pt-2">
+                                        <button class="btn btn-primary btn-sm" type="submit">Apply</button>
+                                        <a class="btn btn-outline-secondary btn-sm" href="{{ $clearCategoryUrl }}">Clear</a>
+                                    </div>
+                                </form>
                             </li>
                         </ul>
                     </div>
@@ -164,7 +175,7 @@
                             Home
                         </a>
                     @elseif($onUserContext)
-                        <a href="{{ route('home.user', ['username' => $userSlug]) }}"
+                        <a href="{{ route('home.user') }}"
                         class="tb-pill-link d-inline-flex align-items-center"
                         style="gap:0.35rem;">
                             <img src="{{ asset('images/home_icon.png') }}" alt="Home" style="height:16px;width:16px;opacity:0.85;">
@@ -179,7 +190,7 @@
                                 Home
                             </a>
                         @else
-                            <a href="{{ route('home.user', ['username' => $userSlug]) }}"
+                            <a href="{{ route('home.user') }}"
                             class="tb-pill-link d-inline-flex align-items-center"
                             style="gap:0.35rem;">
                                 <img src="{{ asset('images/home_icon.png') }}" alt="Home" style="height:16px;width:16px;opacity:0.85;">
@@ -202,14 +213,14 @@
 
                 {{-- CART --}}
                 @if($loggedIn)
-                    <a href="{{ route('cart', ['username' => $userSlug]) }}"
+                    <a href="{{ route('cart') }}"
                     class="tb-pill-link d-inline-flex align-items-center"
                     style="gap:0.35rem;">
                         <img src="{{ asset('images/cart_icon.png') }}" alt="Cart" style="height:16px;width:16px;opacity:0.85;">
                         Cart
                     </a>
                 @elseif(!$loggedIn)
-                    <a href="{{ route('cart.redirect') }}"
+                    <a href="{{ route('cart') }}"
                     class="tb-pill-link d-inline-flex align-items-center"
                     style="gap:0.35rem;">
                         <img src="{{ asset('images/cart_icon.png') }}" alt="Cart" style="height:16px;width:16px;opacity:0.85;">
@@ -227,7 +238,7 @@
                             Profile
                         </a>
                     @else
-                        <a href="{{ route('account', ['username' => $userSlug]) }}"
+                        <a href="{{ route('account') }}"
                         class="tb-pill-link d-inline-flex align-items-center"
                         style="gap:0.35rem;">
                             <img src="{{ asset('images/account_icon.png') }}" alt="Account" style="height:16px;width:16px;opacity:0.85;">

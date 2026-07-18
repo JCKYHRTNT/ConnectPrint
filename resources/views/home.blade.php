@@ -6,9 +6,29 @@
     use Illuminate\Support\Str;
     $userId = session('user_id');
     $userSlug = $userId ? Str::slug(session('name')) : null;
+    $categoryBaseRoute = $userId ? route('home.user') : route('home');
+    $clearCategoryQuery = collect(request()->except('category'))
+        ->filter(fn ($value) => $value !== null && $value !== '')
+        ->all();
+    $clearCategoryUrl = $categoryBaseRoute . ($clearCategoryQuery ? '?' . http_build_query($clearCategoryQuery) : '');
 @endphp
 
 @section('content')
+<style>
+    .cp-category-menu {
+        max-height: 13rem;
+        overflow-y: auto;
+    }
+
+    .cp-category-option {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.35rem 0;
+        white-space: nowrap;
+    }
+</style>
+
 <section class="mb-4">
     <div class="tb-card p-4" style="background:#0f172a;color:#fff;border:none;">
         <span class="badge rounded-pill" style="background:#facc15;color:#111827;">CONNECTPRINT MARKETPLACE</span>
@@ -17,76 +37,50 @@
     </div>
 </section>
 
-@if($userId)
-    <section class="tb-card p-4 mb-3">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
-            <div>
-                <p class="text-muted mb-1">Your workspace</p>
-                <h2 style="font-size:1.35rem;font-weight:700;margin:0;">Add and manage your own images</h2>
-                <p class="text-muted mb-0">Upload image files, keep drafts private, or publish printable artwork for buyers.</p>
-            </div>
-            <div class="d-flex flex-wrap gap-2">
-                <a class="tb-btn-primary" href="{{ route('artworks.create', ['username' => $userSlug]) }}">Add image</a>
-                <a class="tb-btn-secondary" href="{{ route('artworks.index', ['username' => $userSlug]) }}">Manage images</a>
-            </div>
-        </div>
-
-        <div class="row g-3 align-items-stretch">
-            <div class="col-md-3">
-                <div class="border rounded p-3 h-100">
-                    <div class="text-muted small">Total images</div>
-                    <div style="font-size:1.6rem;font-weight:700;">{{ $ownArtworkCount }}</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="border rounded p-3 h-100">
-                    <div class="text-muted small">Pending review</div>
-                    <div style="font-size:1.6rem;font-weight:700;">{{ $pendingOwnArtworkCount }}</div>
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <div class="border rounded p-3 h-100">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <strong>Recent images</strong>
-                        <a class="btn btn-outline-primary btn-sm" href="{{ route('artworks.index', ['username' => $userSlug]) }}">View all</a>
-                    </div>
-
-                    @if($ownArtworks->isEmpty())
-                        <p class="text-muted mb-0">No images uploaded yet.</p>
-                    @else
-                        <div class="d-flex flex-column gap-2">
-                            @foreach($ownArtworks as $ownArtwork)
-                                <a class="d-flex align-items-center gap-2 text-decoration-none text-reset" href="{{ route('artworks.edit', ['username' => $userSlug, 'artwork' => $ownArtwork->id]) }}">
-                                    <img src="{{ $ownArtwork->image_url }}" alt="{{ $ownArtwork->name }}" style="width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;background:#f8fafc;">
-                                    <span class="min-w-0">
-                                        <strong class="d-block">{{ $ownArtwork->name }}</strong>
-                                        <span class="text-muted small">{{ ucfirst($ownArtwork->visibility) }} - {{ ucfirst($ownArtwork->moderation_status) }}</span>
-                                    </span>
-                                </a>
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </section>
-@endif
-
 <section class="tb-card p-3 mb-3">
-    <form method="GET" action="{{ $userId ? route('home.user', ['username' => $userSlug]) : route('home') }}" class="row g-2 align-items-end">
+    <form method="GET" action="{{ $categoryBaseRoute }}" class="row g-2 align-items-end">
         <div class="col-md-4">
             <label class="form-label">Search</label>
             <input class="form-control" name="q" value="{{ request('q') }}" placeholder="Title, creator, or tag">
         </div>
         <div class="col-md-3">
-            <label class="form-label">Category</label>
-            <select class="form-select" name="category">
-                <option value="">All categories</option>
-                @foreach($categories as $category)
-                    <option value="{{ $category->id }}" @selected($categoryId === $category->id)>{{ $category->name }}</option>
-                @endforeach
-            </select>
+            <label class="form-label d-block">Category</label>
+            <div class="dropdown">
+                <button
+                    class="form-select text-start"
+                    type="button"
+                    id="homeCategoryDropdown"
+                    data-bs-toggle="dropdown"
+                    data-bs-auto-close="outside"
+                    aria-expanded="false"
+                >
+                    @if(!empty($categoryIds))
+                        {{ count($categoryIds) }} selected
+                    @else
+                        All categories
+                    @endif
+                </button>
+                <div class="dropdown-menu p-3 w-100" aria-labelledby="homeCategoryDropdown">
+                    <div class="cp-category-menu">
+                        @foreach($categories as $category)
+                            <label class="cp-category-option">
+                                <input
+                                    class="form-check-input m-0"
+                                    type="checkbox"
+                                    name="category[]"
+                                    value="{{ $category->id }}"
+                                    @checked(in_array($category->id, $categoryIds ?? [], true))
+                                >
+                                <span>{{ $category->name }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <div class="d-flex gap-2 pt-2">
+                        <button class="btn btn-primary btn-sm" type="submit">Apply</button>
+                        <a class="btn btn-outline-secondary btn-sm" href="{{ $clearCategoryUrl }}">Clear</a>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="col-md-2">
             <label class="form-label">Type</label>

@@ -14,22 +14,22 @@ class AuthUser
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!session('user_id')) {
+        if (! session('user_id')) {
             return redirect('/login')->with('error', 'Please login first.');
         }
 
-        // Username slug in URL
-        $urlUsername = $request->route('username');  
+        $urlUsername = $request->route('username');
 
-        // Session username slug
+        if ($urlUsername === null) {
+            return $next($request);
+        }
+
         $sessionUsername = Str::slug(session('name'));
 
-        // If URL username does NOT match logged-in user → reject
         if ($urlUsername !== $sessionUsername) {
-
-            return redirect("/u/{$sessionUsername}")->with(
+            return redirect()->route('home.user')->with(
                 'error',
-                'Not authorized to access another user’s page.'
+                'Not authorized to access another user page.'
             );
         }
 

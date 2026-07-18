@@ -17,9 +17,14 @@ class AdminController extends Controller
      */
     public function index(Request $request)
     {
-        $categoryId = $request->filled('category')
-            ? (int) $request->input('category')
-            : null;
+        $categoryIds = collect((array) $request->input('category', []))
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $categoryId = $categoryIds->first();
 
         $query = $request->input('q');
 
@@ -30,8 +35,8 @@ class AdminController extends Controller
         // Base artwork query
         $artworksQuery = Artwork::with(['category', 'user']);
 
-        if (!is_null($categoryId)) {
-            $artworksQuery->where('category_id', $categoryId);
+        if ($categoryIds->isNotEmpty()) {
+            $artworksQuery->whereIn('category_id', $categoryIds->all());
         }
 
         if ($query) {

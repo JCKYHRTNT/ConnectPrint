@@ -59,9 +59,10 @@ Users:
 
 - Marketplace: `/`
 - Printbox handoff page: `/print-with-printbox`
-- User home: `/u/{username}`
+- User home: `/home`
+- User profile: `/account`
 - Personal artwork library: `/u/{username}/artworks`
-- Cart: `/u/{username}/cart`
+- Cart: `/cart`
 - Purchase history: `/u/{username}/purchases`
 - Purchased artwork library: `/u/{username}/purchased-artworks`
 - Creator sales: `/u/{username}/sales`

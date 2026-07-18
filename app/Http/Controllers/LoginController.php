@@ -35,17 +35,14 @@ class LoginController extends Controller
             'role'    => $user->role,
         ]);
 
-        // Use accessor on User model
-        $slug = $user->slug;
-
         if ($user->role === 'admin') {
             return redirect()
-                ->route('admin.user', ['username' => $slug])
+                ->route('admin.user', ['username' => $user->slug])
                 ->with('success', 'Logged in as admin.');
         }
 
         return redirect()
-            ->route('home.user', ['username' => $slug])
+            ->route('home.user')
             ->with('success', 'Logged in.');
     }
 
@@ -78,10 +75,8 @@ class LoginController extends Controller
             'role'    => $user->role,
         ]);
 
-        $slug = $user->slug;
-
         return redirect()
-            ->route('home.user', ['username' => $slug])
+            ->route('home.user')
             ->with('success', 'Account created and logged in.');
     }
 

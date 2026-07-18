@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class Admin
 {
@@ -20,11 +19,7 @@ class Admin
 
         // User
         if (session('role') !== 'admin') {
-            $slug = Str::slug(session('name'));
-
-            return redirect()->route('home.user', [
-                'username' => $slug,
-            ]);
+            return redirect()->route('home.user');
         }
 
         // Admin

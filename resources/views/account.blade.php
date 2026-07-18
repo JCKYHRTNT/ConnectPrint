@@ -214,7 +214,7 @@
     <nav class="cp-profile-nav" aria-label="Profile navigation">
         @foreach($profileTabs as $tabKey => $tabLabel)
             <a
-                href="{{ route('account', ['username' => $userSlug, 'tab' => $tabKey]) }}"
+                href="{{ route('account', ['tab' => $tabKey]) }}"
                 class="cp-profile-nav-link {{ $activeTab === $tabKey ? 'is-active' : '' }}"
                 @if($activeTab === $tabKey) aria-current="page" @endif
             >
@@ -268,7 +268,7 @@
 
             @if($isAdmin)
                 @if($isAdminPage)
-                    <a href="{{ route('home.user', ['username' => $userSlug]) }}" class="tb-btn-account tb-btn-account-role">User mode</a>
+                    <a href="{{ route('home.user') }}" class="tb-btn-account tb-btn-account-role">User mode</a>
                 @else
                     <a href="{{ route('admin.user', ['username' => $userSlug]) }}" class="tb-btn-account tb-btn-account-role">Admin mode</a>
                 @endif
@@ -278,11 +278,11 @@
         @php
             $updateRoute = $isAdminPage
                 ? route('account.admin.update', ['username' => $userSlug])
-                : route('account.update', ['username' => $userSlug]);
+                : route('account.update');
 
             $deleteRoute = $isAdminPage
                 ? route('account.admin.delete', ['username' => $userSlug])
-                : route('account.delete', ['username' => $userSlug]);
+                : route('account.delete');
         @endphp
 
         <div id="editFormWrapper" class="d-none" style="max-width:420px;">

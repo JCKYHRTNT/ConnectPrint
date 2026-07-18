@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Models\Category;
 use App\Models\Purchase;
 use App\Models\AppNotification;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
@@ -18,7 +17,7 @@ class CartController extends Controller
     /**
      * Show cart for logged-in user.
      */
-    public function index($username = null)
+    public function index()
     {
         if (!session('user_id')) {
             return redirect()->route('login')->with('error', 'Please login to view your cart.');
@@ -51,7 +50,7 @@ class CartController extends Controller
     /**
      * Add artwork to cart.
      */
-    public function add(Request $request, $username, Artwork $artwork)
+    public function add(Request $request, Artwork $artwork)
     {
         if (!session('user_id')) {
             return redirect()->route('login')->with('error', 'Please login to add items to cart.');
@@ -74,17 +73,15 @@ class CartController extends Controller
             ['quantity' => 1, 'creator_price_snapshot' => $artwork->price]
         );
 
-        $slug = Str::slug(session('name'));
-
         return redirect()
-            ->route('cart', ['username' => $slug])
+            ->route('cart')
             ->with('success', 'Printable access added to cart.');
     }
 
     /**
      * Update quantity for a cart item.
      */
-    public function update(Request $request, $username, CartItem $item)
+    public function update(Request $request, CartItem $item)
     {
         if (!session('user_id')) {
             return redirect()->route('login')->with('error', 'Please login first.');
@@ -92,17 +89,15 @@ class CartController extends Controller
 
         $item->delete();
 
-        $slug = Str::slug(session('name'));
-
         return redirect()
-            ->route('cart', ['username' => $slug])
+            ->route('cart')
             ->with('success', 'Artwork removed from cart.');
     }
 
     /**
      * Checkout: simulate payment, create purchase snapshots, and clear cart.
      */
-    public function checkout(Request $request, $username)
+    public function checkout(Request $request)
     {
         if (!session('user_id')) {
             return redirect()->route('login')->with('error', 'Please login first.');
@@ -166,7 +161,7 @@ class CartController extends Controller
                     AppNotification::create([
                         'user_id' => $artwork->user_id,
                         'message' => $user->name . ' purchased printable access to "' . $artwork->name . '".',
-                        'url' => route('sales', ['username' => $artwork->user->slug ?? Str::slug($artwork->creatorName())]),
+                        'url' => route('sales', ['username' => $artwork->user->slug ?? \Illuminate\Support\Str::slug($artwork->creatorName())]),
                     ]);
                 }
             }
@@ -182,10 +177,8 @@ class CartController extends Controller
             return $purchase;
         });
 
-        $slug = Str::slug(session('name'));
-
         return redirect()
-            ->route('purchases.show', ['username' => $slug, 'purchase' => $purchase->id])
+            ->route('purchases.show', ['username' => $user->slug, 'purchase' => $purchase->id])
             ->with('success', 'Simulation only - no real payment was processed.');
     }
 }

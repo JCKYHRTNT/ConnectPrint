@@ -2,11 +2,6 @@
 
 @section('title', 'Cart - ConnectPrint')
 
-@php
-    use Illuminate\Support\Str;
-    $userSlug = Str::slug(session('name'));
-@endphp
-
 @section('content')
 <div class="tb-card p-4">
     <h1 style="font-size:1.4rem;font-weight:700;">Printable access cart</h1>
@@ -27,7 +22,7 @@
                         <div class="text-muted small">Creator: {{ $artwork->creatorName() }}</div>
                         <div style="font-weight:700;color:var(--tb-blue);">Rp{{ number_format($artwork->price, 0, ',', '.') }}</div>
                     </div>
-                    <form method="POST" action="{{ route('cart.item.update', ['username' => $userSlug, 'item' => $item->id]) }}">
+                    <form method="POST" action="{{ route('cart.item.update', ['item' => $item->id]) }}">
                         @csrf
                         <button class="btn btn-outline-danger btn-sm" type="submit">Remove</button>
                     </form>
@@ -41,7 +36,7 @@
                 <strong>Rp{{ number_format($total, 0, ',', '.') }}</strong>
             </div>
             <p class="small text-muted">Printbox application fees are paid separately on the Printbox website.</p>
-            <form method="POST" action="{{ route('cart.checkout', ['username' => $userSlug]) }}">
+            <form method="POST" action="{{ route('cart.checkout') }}">
                 @csrf
                 <div class="mb-2">
                     <label class="form-label">Demo payment method</label>

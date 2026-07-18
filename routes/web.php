@@ -14,12 +14,15 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ArtworkReportController;
 // Guest Home
 Route::get('/', [HomeController::class, 'home'])->name('home');
-Route::redirect('/home', '/')->name('home.redirect');
 
 // User Home
-Route::get('/u/{username}', [HomeController::class, 'homeForUser'])
+Route::get('/home', [HomeController::class, 'homeForUser'])
     ->middleware('auth.user')
     ->name('home.user');
+
+Route::get('/u/{username}', function () {
+    return redirect()->route('home.user', request()->query());
+})->middleware('auth.user')->name('home.user.legacy');
 
 // Guest artwork detail
 Route::get('/artworks/{id}', [HomeController::class, 'artworkDetail'])
@@ -41,26 +44,26 @@ Route::get('/u/{username}/artworks/{id}', [HomeController::class, 'artworkDetail
     ->whereNumber('id')
     ->name('artworks.show.user');
 
-// Guest cart
-Route::get('/cart', fn () => redirect()->route('login'))
-    ->name('cart.redirect');
-
 // User cart
-Route::get('/u/{username}/cart', [CartController::class, 'index'])
+Route::get('/cart', [CartController::class, 'index'])
     ->middleware('auth.user')
     ->name('cart');
 
+Route::get('/u/{username}/cart', function () {
+    return redirect()->route('cart');
+})->middleware('auth.user')->name('cart.legacy');
+
 // User Cart Add Update
-Route::post('/u/{username}/cart/artworks/{artwork}', [CartController::class, 'add'])
+Route::post('/cart/artworks/{artwork}', [CartController::class, 'add'])
     ->middleware('auth.user')
     ->name('cart.add');
 
-Route::post('/u/{username}/cart/items/{item}/update', [CartController::class, 'update'])
+Route::post('/cart/items/{item}/update', [CartController::class, 'update'])
     ->middleware('auth.user')
     ->name('cart.item.update');
 
 // User Cart Checkout
-Route::post('/u/{username}/cart/checkout', [CartController::class, 'checkout'])
+Route::post('/cart/checkout', [CartController::class, 'checkout'])
     ->middleware('auth.user')
     ->name('cart.checkout');
 
@@ -89,18 +92,18 @@ Route::post('/artworks/{artwork}/reports', [ArtworkReportController::class, 'sto
     ->name('artworks.reports.store');
 
 // Account Page
-// Guest account
-Route::get('/account', fn () => redirect()->route('login'))
-    ->name('account.redirect');
-
 // User account (view)
-Route::get('/u/{username}/account', [AccountController::class, 'userAccount'])
+Route::get('/account', [AccountController::class, 'userAccount'])
     ->middleware('auth.user')
     ->name('account');
 
+Route::get('/u/{username}/account', function () {
+    return redirect()->route('account', request()->query());
+})->middleware('auth.user')->name('account.legacy');
+
 // User redirect from admin/crud
 Route::get('/u/{username}/admin', function ($username) {
-    return redirect()->route('home.user', ['username' => $username]);
+    return redirect()->route('home.user');
 });
 
 // Admin account (view)
@@ -109,11 +112,11 @@ Route::get('/a/{username}/account', [AccountController::class, 'adminAccount'])
     ->name('account.admin');
 
 // Account update/delete (user)
-Route::post('/u/{username}/account/update', [AccountController::class, 'update'])
+Route::post('/account/update', [AccountController::class, 'update'])
     ->middleware('auth.user')
     ->name('account.update');
 
-Route::post('/u/{username}/account/delete', [AccountController::class, 'destroy'])
+Route::post('/account/delete', [AccountController::class, 'destroy'])
     ->middleware('auth.user')
     ->name('account.delete');
 
