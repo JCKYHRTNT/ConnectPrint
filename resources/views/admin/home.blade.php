@@ -364,7 +364,6 @@
                     <div class="mb-2">
                         <label class="form-label" for="np_category">Category</label>
                         <select id="np_category" name="category_id" class="form-select">
-                            <option value="">— None —</option>
                             @foreach($categories as $cat)
                                 <option value="{{ $cat->id }}">{{ $cat->name }}</option>
                             @endforeach

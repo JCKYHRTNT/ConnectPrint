@@ -77,7 +77,7 @@ class Product extends Model
                 return asset($this->preview_path);
             }
 
-            return asset('storage/' . $this->preview_path);
+            return route('artworks.preview', ['artwork' => $this->id], false);
         }
 
         if ($this->image && file_exists(public_path($this->image))) {

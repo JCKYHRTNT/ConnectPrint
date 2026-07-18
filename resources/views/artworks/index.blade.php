@@ -11,7 +11,7 @@
 @if(session('error')) <div class="alert alert-warning">{{ session('error') }}</div> @endif
 
 <div class="tb-card p-3 mb-3">
-    @foreach(['all', 'public', 'unlisted', 'private', 'archived', 'printable', 'display-only'] as $filter)
+    @foreach(['all', 'draft', 'public', 'unlisted', 'private', 'archived', 'printable', 'display-only'] as $filter)
         <a class="btn btn-sm {{ request('filter', 'all') === $filter ? 'btn-primary' : 'btn-outline-secondary' }} me-1" href="{{ route('artworks.index', ['filter' => $filter]) }}">{{ ucfirst($filter) }}</a>
     @endforeach
 </div>

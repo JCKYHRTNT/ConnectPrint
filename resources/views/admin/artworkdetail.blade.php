@@ -118,7 +118,6 @@
                 <div class="mb-2">
                     <label class="form-label" for="category_id">Category</label>
                     <select id="category_id" name="category_id" class="form-select">
-                        <option value="">— None —</option>
                         @foreach($categories as $cat)
                             <option value="{{ $cat->id }}"
                                 {{ (old('category_id', $artwork->category_id) == $cat->id) ? 'selected' : '' }}>

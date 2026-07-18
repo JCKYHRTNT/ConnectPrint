@@ -10,6 +10,7 @@ use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 
 class ArtworkController extends Controller
@@ -23,6 +24,7 @@ class ArtworkController extends Controller
             match ($request->filter) {
                 'printable' => $query->where('is_printable', true),
                 'display-only' => $query->where('is_printable', false),
+                'draft' => $query->where('moderation_status', 'draft'),
                 default => $query->where('visibility', $request->filter),
             };
         }
@@ -35,7 +37,7 @@ class ArtworkController extends Controller
     public function create()
     {
         return view('artworks.form', [
-            'artwork' => new Artwork(['visibility' => 'private', 'is_printable' => true]),
+            'artwork' => new Artwork(['visibility' => null, 'is_printable' => false]),
             'categories' => Category::orderBy('name')->get(),
             'suggestedTags' => $this->suggestedTagNames(),
             'mode' => 'create',
@@ -47,11 +49,7 @@ class ArtworkController extends Controller
         $user = User::findOrFail(session('user_id'));
         $data = $this->validatedData($request, true);
         $image = $request->file('image');
-        [$width, $height] = getimagesize($image->getRealPath()) ?: [null, null];
-        $uuid = (string) Str::uuid();
-        $extension = $image->getClientOriginalExtension();
-        $originalPath = $image->storeAs("artworks/{$user->id}/{$uuid}", "original.{$extension}");
-        $previewPath = $image->storeAs("public/artworks/{$user->id}/{$uuid}", "preview.{$extension}");
+        $storedImage = $this->storeArtworkImage($image, $user);
 
         $artwork = Artwork::create([
             'user_id' => $user->id,
@@ -62,13 +60,13 @@ class ArtworkController extends Controller
             'description' => $data['description'] ?? null,
             'quantity' => 1,
             'category_id' => $data['category_id'],
-            'original_filename' => $image->getClientOriginalName(),
-            'original_path' => $originalPath,
-            'preview_path' => Str::after($previewPath, 'public/'),
-            'mime_type' => $image->getMimeType(),
-            'file_size' => $image->getSize(),
-            'width' => $width,
-            'height' => $height,
+            'original_filename' => $storedImage['original_filename'],
+            'original_path' => $storedImage['original_path'],
+            'preview_path' => $storedImage['preview_path'],
+            'mime_type' => $storedImage['mime_type'],
+            'file_size' => $storedImage['file_size'],
+            'width' => $storedImage['width'],
+            'height' => $storedImage['height'],
             'visibility' => $data['visibility'],
             'share_token' => $data['visibility'] === 'unlisted' ? Str::random(40) : null,
             'is_printable' => $request->boolean('is_printable'),
@@ -100,7 +98,7 @@ class ArtworkController extends Controller
         $data = $this->validatedData($request, false);
         $visibilityChanged = $artwork->visibility !== $data['visibility'];
 
-        $artwork->update([
+        $updates = [
             'name' => $data['title'],
             'description' => $data['description'] ?? null,
             'category_id' => $data['category_id'],
@@ -108,13 +106,100 @@ class ArtworkController extends Controller
             'share_token' => $data['visibility'] === 'unlisted' ? ($artwork->share_token ?: Str::random(40)) : null,
             'is_printable' => $request->boolean('is_printable'),
             'price' => $request->boolean('is_printable') ? (int) $data['creator_price'] : 0,
-            'moderation_status' => $visibilityChanged && $data['visibility'] !== 'private' ? 'pending' : $artwork->moderation_status,
+            'moderation_status' => $data['visibility'] === 'private'
+                ? 'approved'
+                : ($visibilityChanged ? 'pending' : $artwork->moderation_status),
             'published_at' => $data['visibility'] !== 'private' ? ($artwork->published_at ?: now()) : null,
-        ]);
+        ];
+
+        if ($request->hasFile('image')) {
+            $updates = array_merge($updates, $this->storeArtworkImage($request->file('image'), User::findOrFail($artwork->user_id)));
+            $updates['image'] = null;
+        }
+
+        $artwork->update($updates);
 
         $this->syncTags($artwork, $request->input('tags'));
 
         return redirect()->route('artworks.index')->with('success', 'Artwork updated.');
+    }
+
+    public function saveDraft(Request $request, ?Artwork $artwork = null)
+    {
+        $user = User::findOrFail(session('user_id'));
+
+        if ($artwork) {
+            $this->authorizeOwner($artwork);
+        }
+
+        $data = $request->validate([
+            'draft_artwork_id' => ['nullable', 'integer', 'exists:products,id'],
+            'title' => ['nullable', 'string', 'max:150'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+            'category_id' => ['nullable', 'exists:categories,id'],
+            'tags' => ['nullable', 'string', 'max:2000'],
+            'visibility' => ['nullable', 'in:public,unlisted,private'],
+            'is_printable' => ['nullable', 'boolean'],
+            'creator_price' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        if (! $artwork && ! empty($data['draft_artwork_id'])) {
+            $artwork = Artwork::where('id', $data['draft_artwork_id'])
+                ->where('user_id', $user->id)
+                ->first();
+        }
+
+        $title = trim((string) ($data['title'] ?? ''));
+        $hasPrintablePrice = $request->boolean('is_printable') && (int) ($data['creator_price'] ?? 0) > 0;
+
+        $updates = [
+            'user_id' => $user->id,
+            'name' => $title !== '' ? $title : 'Untitled draft',
+            'slug' => Str::slug($title !== '' ? $title : 'untitled-draft') . '-' . Str::random(6),
+            'price' => $hasPrintablePrice ? (int) $data['creator_price'] : 0,
+            'image' => null,
+            'description' => $data['description'] ?? null,
+            'quantity' => 1,
+            'category_id' => $data['category_id'] ?? null,
+            'visibility' => 'private',
+            'share_token' => null,
+            'is_printable' => $request->boolean('is_printable'),
+            'moderation_status' => 'draft',
+            'published_at' => null,
+        ];
+
+        if ($request->hasFile('image')) {
+            $updates = array_merge($updates, $this->storeArtworkImage($request->file('image'), $user));
+        }
+
+        if ($artwork) {
+            unset($updates['user_id']);
+
+            if (! $request->hasFile('image')) {
+                unset(
+                    $updates['original_filename'],
+                    $updates['original_path'],
+                    $updates['preview_path'],
+                    $updates['mime_type'],
+                    $updates['file_size'],
+                    $updates['width'],
+                    $updates['height']
+                );
+            }
+
+            $artwork->update($updates);
+        } else {
+            $artwork = Artwork::create($updates);
+        }
+
+        $this->syncTags($artwork, $request->input('tags'));
+
+        return response()->json([
+            'id' => $artwork->id,
+            'edit_url' => route('artworks.edit', ['artwork' => $artwork->id]),
+            'draft_url' => route('artworks.draft.update', ['artwork' => $artwork->id]),
+        ]);
     }
 
     public function archive(Artwork $artwork)
@@ -155,6 +240,37 @@ class ArtworkController extends Controller
         ]);
     }
 
+    public function preview(Artwork $artwork)
+    {
+        $viewer = session('user_id') ? User::find(session('user_id')) : null;
+        $isOwner = $viewer && (int) $viewer->id === (int) $artwork->user_id;
+        $isAdmin = $viewer && $viewer->role === 'admin';
+        $isPublic = $artwork->visibility === 'public'
+            && $artwork->moderation_status === 'approved'
+            && ! $artwork->isArchived();
+        $isUnlisted = $artwork->visibility === 'unlisted'
+            && ! $artwork->isArchived();
+
+        abort_unless($isOwner || $isAdmin || $isPublic || $isUnlisted, 403);
+
+        if ($artwork->preview_path) {
+            if (Storage::disk('public')->exists($artwork->preview_path)) {
+                return Storage::disk('public')->response($artwork->preview_path);
+            }
+
+            $legacyPreviewPath = 'public/' . $artwork->preview_path;
+            if (Storage::exists($legacyPreviewPath)) {
+                return Storage::response($legacyPreviewPath);
+            }
+        }
+
+        if ($artwork->image && file_exists(public_path($artwork->image))) {
+            return response()->file(public_path($artwork->image));
+        }
+
+        abort(404);
+    }
+
     public function printFile(Artwork $artwork)
     {
         $user = User::findOrFail(session('user_id'));
@@ -185,8 +301,40 @@ class ArtworkController extends Controller
             'tags' => ['nullable', 'string', 'max:2000'],
             'visibility' => ['required', 'in:public,unlisted,private'],
             'is_printable' => ['nullable', 'boolean'],
-            'creator_price' => ['required_if:is_printable,1', 'integer', 'min:0'],
+            'creator_price' => [Rule::requiredIf($request->boolean('is_printable')), 'nullable', 'integer', 'min:1'],
+        ], [
+            'title.required' => '*Title is required',
+            'image.required' => '*Upload Image is required',
+            'image.image' => 'Upload Image must be a valid image file.',
+            'image.mimes' => 'Upload Image must be a JPG, JPEG, PNG, or WEBP file.',
+            'image.max' => 'Upload Image must be 10 MB or smaller.',
+            'category_id.required' => '*Category is required',
+            'category_id.exists' => 'Choose a valid category.',
+            'visibility.required' => '*Visibility is required',
+            'visibility.in' => 'Choose a valid visibility.',
+            'creator_price.required' => '*Price is required when printable access is enabled',
+            'creator_price.integer' => 'Price must be a whole number.',
+            'creator_price.min' => 'Price must be greater than 0.',
         ]);
+    }
+
+    private function storeArtworkImage($image, User $user): array
+    {
+        [$width, $height] = getimagesize($image->getRealPath()) ?: [null, null];
+        $uuid = (string) Str::uuid();
+        $extension = $image->getClientOriginalExtension();
+        $originalPath = $image->storeAs("artworks/{$user->id}/{$uuid}", "original.{$extension}");
+        $previewPath = $image->storeAs("artworks/{$user->id}/{$uuid}", "preview.{$extension}", 'public');
+
+        return [
+            'original_filename' => $image->getClientOriginalName(),
+            'original_path' => $originalPath,
+            'preview_path' => $previewPath,
+            'mime_type' => $image->getMimeType(),
+            'file_size' => $image->getSize(),
+            'width' => $width,
+            'height' => $height,
+        ];
     }
 
     private function syncTags(Artwork $artwork, ?string $rawTags): void
@@ -208,7 +356,8 @@ class ArtworkController extends Controller
     {
         $fallback = collect(['digitalart', 'fanart', 'magic', 'digitalpainting', 'wallpaper', 'animedrawing', 'adoptable']);
 
-        return Tag::orderBy('name')
+        return Tag::whereHas('artworks', fn ($query) => $query->whereIn('visibility', ['public', 'unlisted']))
+            ->orderBy('name')
             ->pluck('name')
             ->merge($fallback)
             ->map(fn ($tag) => Str::of($tag)->replace(' ', '')->lower()->toString())

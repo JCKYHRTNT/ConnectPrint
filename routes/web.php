@@ -32,6 +32,10 @@ Route::get('/artworks/{id}', [HomeController::class, 'artworkDetail'])
 Route::get('/shared/artworks/{shareToken}', [ArtworkController::class, 'shared'])
     ->name('artworks.shared');
 
+Route::get('/artworks/{artwork}/preview', [ArtworkController::class, 'preview'])
+    ->whereNumber('artwork')
+    ->name('artworks.preview');
+
 Route::get('/creators/{user}', [CreatorController::class, 'show'])
     ->name('creators.show');
 
@@ -42,8 +46,10 @@ Route::middleware('auth.user')->group(function () {
     Route::get('/artworks', [ArtworkController::class, 'index'])->name('artworks.index');
     Route::get('/artworks/create', [ArtworkController::class, 'create'])->name('artworks.create');
     Route::post('/artworks', [ArtworkController::class, 'store'])->name('artworks.store');
+    Route::post('/artworks/draft', [ArtworkController::class, 'saveDraft'])->name('artworks.draft.store');
     Route::get('/artworks/{artwork}/edit', [ArtworkController::class, 'edit'])->whereNumber('artwork')->name('artworks.edit');
     Route::put('/artworks/{artwork}', [ArtworkController::class, 'update'])->whereNumber('artwork')->name('artworks.update');
+    Route::post('/artworks/{artwork}/draft', [ArtworkController::class, 'saveDraft'])->whereNumber('artwork')->name('artworks.draft.update');
     Route::patch('/artworks/{artwork}/archive', [ArtworkController::class, 'archive'])->whereNumber('artwork')->name('artworks.archive');
     Route::patch('/artworks/{artwork}/restore', [ArtworkController::class, 'restore'])->whereNumber('artwork')->name('artworks.restore');
     Route::delete('/artworks/{artwork}', [ArtworkController::class, 'destroy'])->whereNumber('artwork')->name('artworks.destroy');

@@ -137,7 +137,8 @@ class HomeController extends Controller
     {
         $fallback = collect(['digitalart', 'fanart', 'magic', 'digitalpainting', 'wallpaper', 'animedrawing', 'adoptable']);
 
-        return Tag::orderBy('name')
+        return Tag::whereHas('artworks', fn ($query) => $query->whereIn('visibility', ['public', 'unlisted']))
+            ->orderBy('name')
             ->pluck('name')
             ->merge($fallback)
             ->map(fn ($tag) => Str::of($tag)->replace(' ', '')->lower()->toString())
