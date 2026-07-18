@@ -2,22 +2,17 @@
 
 @section('title', 'Personal library - ConnectPrint')
 
-@php
-    use Illuminate\Support\Str;
-    $userSlug = Str::slug(session('name'));
-@endphp
-
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 style="font-size:1.5rem;font-weight:700;">Personal library</h1>
-    <a class="tb-btn-primary" href="{{ route('artworks.create', ['username' => $userSlug]) }}">Upload artwork</a>
+    <a class="tb-btn-primary" href="{{ route('artworks.create') }}">Upload artwork</a>
 </div>
 @if(session('success')) <div class="alert alert-success">{{ session('success') }}</div> @endif
 @if(session('error')) <div class="alert alert-warning">{{ session('error') }}</div> @endif
 
 <div class="tb-card p-3 mb-3">
     @foreach(['all', 'public', 'unlisted', 'private', 'archived', 'printable', 'display-only'] as $filter)
-        <a class="btn btn-sm {{ request('filter', 'all') === $filter ? 'btn-primary' : 'btn-outline-secondary' }} me-1" href="{{ route('artworks.index', ['username' => $userSlug, 'filter' => $filter]) }}">{{ ucfirst($filter) }}</a>
+        <a class="btn btn-sm {{ request('filter', 'all') === $filter ? 'btn-primary' : 'btn-outline-secondary' }} me-1" href="{{ route('artworks.index', ['filter' => $filter]) }}">{{ ucfirst($filter) }}</a>
     @endforeach
 </div>
 
@@ -39,14 +34,14 @@
                         <input class="form-control form-control-sm mb-2" value="{{ route('artworks.shared', $artwork->share_token) }}" readonly>
                     @endif
                     <div class="d-flex gap-1 flex-wrap">
-                        <a class="btn btn-outline-primary btn-sm" href="{{ route('artworks.show.user', ['username' => $userSlug, 'id' => $artwork->id]) }}">View</a>
-                        <a class="btn btn-outline-secondary btn-sm" href="{{ route('artworks.edit', ['username' => $userSlug, 'artwork' => $artwork->id]) }}">Edit</a>
+                        <a class="btn btn-outline-primary btn-sm" href="{{ route('artworks.show', $artwork->id) }}">View</a>
+                        <a class="btn btn-outline-secondary btn-sm" href="{{ route('artworks.edit', ['artwork' => $artwork->id]) }}">Edit</a>
                         @if($artwork->isArchived())
-                            <form method="POST" action="{{ route('artworks.restore', ['username' => $userSlug, 'artwork' => $artwork->id]) }}">@csrf @method('PATCH')<button class="btn btn-outline-success btn-sm">Restore</button></form>
+                            <form method="POST" action="{{ route('artworks.restore', ['artwork' => $artwork->id]) }}">@csrf @method('PATCH')<button class="btn btn-outline-success btn-sm">Restore</button></form>
                         @else
-                            <form method="POST" action="{{ route('artworks.archive', ['username' => $userSlug, 'artwork' => $artwork->id]) }}">@csrf @method('PATCH')<button class="btn btn-outline-warning btn-sm">Archive</button></form>
+                            <form method="POST" action="{{ route('artworks.archive', ['artwork' => $artwork->id]) }}">@csrf @method('PATCH')<button class="btn btn-outline-warning btn-sm">Archive</button></form>
                         @endif
-                        <form method="POST" action="{{ route('artworks.destroy', ['username' => $userSlug, 'artwork' => $artwork->id]) }}" onsubmit="return confirm('Delete unused artwork or archive purchased artwork?');">@csrf @method('DELETE')<button class="btn btn-outline-danger btn-sm">Delete</button></form>
+                        <form method="POST" action="{{ route('artworks.destroy', ['artwork' => $artwork->id]) }}" onsubmit="return confirm('Delete unused artwork or archive purchased artwork?');">@csrf @method('DELETE')<button class="btn btn-outline-danger btn-sm">Delete</button></form>
                     </div>
                 </div>
             </div>

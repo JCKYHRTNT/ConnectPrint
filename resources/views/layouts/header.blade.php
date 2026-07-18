@@ -13,6 +13,11 @@
         padding: 0.35rem 0;
         white-space: nowrap;
     }
+
+    .tb-header-search-form {
+        gap: 0.4rem;
+        min-width: 260px;
+    }
 </style>
 
 <header class="tb-header-fixed">
@@ -30,6 +35,7 @@
                 ->filter(fn ($id) => $id !== null && $id !== '')
                 ->map(fn ($id) => (int) $id)
                 ->all();
+            $availableCategories = $headerCategories ?? ($categories ?? collect());
 
             if ($onAdminContext && $loggedIn && $userSlug) {
                 $searchBaseUrl = url('/a/'.$userSlug);
@@ -70,7 +76,7 @@
             <div class="d-flex flex-grow-1 align-items-center" style="gap:0.5rem;max-width:620px;min-width:260px;">
 
                 {{-- Search --}}
-                <form action="{{ $searchBaseUrl }}" method="GET" class="d-flex flex-grow-1" style="gap:0.4rem;">
+                <form action="{{ $searchBaseUrl }}" method="GET" class="tb-header-search-form d-flex flex-grow-1" data-cp-navbar-search-form>
                     @foreach($selectedCategories as $selectedCategory)
                         <input type="hidden" name="category[]" value="{{ $selectedCategory }}">
                     @endforeach
@@ -106,9 +112,10 @@
                         'cart'
                     );
 
-                    $clearCategoryUrl = request('q')
-                        ? $searchBaseUrl.'?q='.urlencode(request('q'))
-                        : $searchBaseUrl;
+                    $clearCategoryQuery = collect(request()->except('category'))
+                        ->filter(fn ($value) => $value !== null && $value !== '')
+                        ->all();
+                    $clearCategoryUrl = $searchBaseUrl . ($clearCategoryQuery ? '?' . http_build_query($clearCategoryQuery) : '');
                 @endphp
 
                 @if($showFilter)
@@ -137,16 +144,16 @@
                                     @endif
 
                                     <div class="tb-category-dropdown">
-                                        @foreach(($categories ?? []) as $cat)
+                                        @foreach($availableCategories as $cat)
                                             <label class="tb-category-option">
                                                 <input
                                                     class="form-check-input m-0"
                                                     type="checkbox"
                                                     name="category[]"
-                                                    value="{{ $cat['id'] }}"
-                                                    @checked(in_array((int) $cat['id'], $selectedCategories, true))
+                                                    value="{{ $cat->id }}"
+                                                    @checked(in_array((int) $cat->id, $selectedCategories, true))
                                                 >
-                                                <span>{{ ucfirst($cat['name']) }}</span>
+                                                <span>{{ ucfirst($cat->name) }}</span>
                                             </label>
                                         @endforeach
                                     </div>

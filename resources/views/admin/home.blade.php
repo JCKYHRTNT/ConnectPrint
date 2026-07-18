@@ -5,8 +5,14 @@
 @php
     use Illuminate\Support\Str;
 
-    $query      = request('q');
-    $categoryId = request()->filled('category') ? (int) request('category') : null;
+    $query       = request('q');
+    $categoryIds = collect((array) request('category'))
+        ->filter(fn ($id) => $id !== null && $id !== '')
+        ->map(fn ($id) => (int) $id)
+        ->filter()
+        ->values()
+        ->all();
+    $categoryId  = $categoryIds[0] ?? null;
 
     // $categories is an Eloquent collection passed from AdminController
     $recentCategories = $categories

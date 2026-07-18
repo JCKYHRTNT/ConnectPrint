@@ -48,7 +48,7 @@
 
             <div class="d-flex gap-2 flex-wrap">
                 @if($isOwner || $alreadyPurchased || ($viewer && $viewer->role === 'admin'))
-                    <a class="tb-btn-primary" href="{{ route('artworks.print-file', ['username' => $userSlug ?? Str::slug($artwork->creatorName()), 'artwork' => $artwork->id]) }}">Open print-ready file</a>
+                    <a class="tb-btn-primary" href="{{ route('artworks.print-file', ['artwork' => $artwork->id]) }}">Open print-ready file</a>
                     <a class="btn btn-outline-primary btn-sm" href="{{ route('printbox') }}">Printbox instructions</a>
                 @elseif(! $artwork->is_printable)
                     <button class="btn btn-secondary btn-sm" disabled>Display only - printing is not permitted</button>

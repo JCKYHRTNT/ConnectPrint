@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Product as Artwork;
 use App\Models\Category;
+use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Support\Str;
 
@@ -25,6 +26,11 @@ class HomeController extends Controller
         $categoryId = $categoryIds->first();
 
         $query = $request->input('q');
+        $selectedTags = collect((array) $request->input('tags', []))
+            ->map(fn ($tag) => Str::of($tag)->ltrim('#')->replaceMatches('/\s+/', '')->lower()->toString())
+            ->filter()
+            ->unique()
+            ->values();
 
         // Load categories
         $categories = Category::orderBy('name')->get();
@@ -45,11 +51,23 @@ class HomeController extends Controller
 
         // FILTER BY SEARCH
         if ($query) {
-            $q = strtolower($query);
-            $artworksQuery->where(function ($subQuery) use ($q) {
-                $subQuery->whereRaw('LOWER(name) LIKE ?', ["%{$q}%"])
-                    ->orWhereHas('user', fn ($creatorQuery) => $creatorQuery->whereRaw('LOWER(name) LIKE ?', ["%{$q}%"]))
-                    ->orWhereHas('tags', fn ($tagQuery) => $tagQuery->whereRaw('LOWER(name) LIKE ?', ["%{$q}%"]));
+            $q = strtolower(trim($query));
+
+            if (str_starts_with($q, '#')) {
+                $tagQueryText = ltrim($q, '#');
+                $artworksQuery->whereHas('tags', fn ($tagQuery) => $tagQuery->whereRaw('LOWER(name) LIKE ?', ["%{$tagQueryText}%"]));
+            } else {
+                $artworksQuery->where(function ($subQuery) use ($q) {
+                    $subQuery->whereRaw('LOWER(name) LIKE ?', ["%{$q}%"])
+                        ->orWhereHas('user', fn ($creatorQuery) => $creatorQuery->whereRaw('LOWER(name) LIKE ?', ["%{$q}%"]))
+                        ->orWhereHas('tags', fn ($tagQuery) => $tagQuery->whereRaw('LOWER(name) LIKE ?', ["%{$q}%"]));
+                });
+            }
+        }
+
+        if ($selectedTags->isNotEmpty()) {
+            $artworksQuery->whereHas('tags', function ($tagQuery) use ($selectedTags) {
+                $tagQuery->whereIn('name', $selectedTags->all());
             });
         }
 
@@ -106,11 +124,27 @@ class HomeController extends Controller
             'recentCategories' => $recentCategories,
             'categories'       => $categories,
             'categoryNames'    => $categoryNames,
+            'suggestedTags'    => $this->suggestedTagNames(),
+            'selectedTags'     => $selectedTags->all(),
             'viewer'           => $viewer,
             'ownArtworks'      => $ownArtworks,
             'ownArtworkCount'  => $ownArtworkCount,
             'pendingOwnArtworkCount' => $pendingOwnArtworkCount,
         ]);
+    }
+
+    private function suggestedTagNames(): array
+    {
+        $fallback = collect(['digitalart', 'fanart', 'magic', 'digitalpainting', 'wallpaper', 'animedrawing', 'adoptable']);
+
+        return Tag::orderBy('name')
+            ->pluck('name')
+            ->merge($fallback)
+            ->map(fn ($tag) => Str::of($tag)->replace(' ', '')->lower()->toString())
+            ->unique()
+            ->take(12)
+            ->values()
+            ->all();
     }
 
     /**

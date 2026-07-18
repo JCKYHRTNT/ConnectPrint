@@ -328,19 +328,19 @@
                 <h2 style="font-size:1.25rem;font-weight:700;margin:0;">Your Images</h2>
                 <p class="text-muted mb-0">Upload image files and manage your existing artwork cards.</p>
             </div>
-            <a class="tb-btn-primary" href="{{ route('artworks.create', ['username' => $userSlug]) }}">Upload Image</a>
+            <a class="tb-btn-primary" href="{{ route('artworks.create') }}">Upload Image</a>
         </div>
 
         @if($artworks->isEmpty())
             <div class="border rounded p-4 text-center">
                 <p class="text-muted mb-3">No images uploaded yet.</p>
-                <a class="tb-btn-primary" href="{{ route('artworks.create', ['username' => $userSlug]) }}">Upload Image</a>
+                <a class="tb-btn-primary" href="{{ route('artworks.create') }}">Upload Image</a>
             </div>
         @else
             <div class="cp-grid">
                 @foreach($artworks as $artwork)
                     <div class="cp-artwork-card">
-                        <a href="{{ route('artworks.show.user', ['username' => $userSlug, 'id' => $artwork->id]) }}">
+                        <a href="{{ route('artworks.show', $artwork->id) }}">
                             <img src="{{ $artwork->image_url }}" alt="{{ $artwork->name }}" class="cp-artwork-thumb">
                         </a>
                         <div class="p-3">
@@ -356,8 +356,8 @@
                             <div class="text-muted small mb-2">{{ $artwork->original_filename ?: 'No original filename' }}</div>
                             <div class="mt-2 mb-3" style="font-weight:700;color:var(--tb-blue);">Rp{{ number_format($artwork->price, 0, ',', '.') }}</div>
                             <div class="cp-card-actions">
-                                <a class="btn btn-outline-secondary btn-sm" href="{{ route('artworks.edit', ['username' => $userSlug, 'artwork' => $artwork->id]) }}">Edit</a>
-                                <form method="POST" action="{{ route('artworks.destroy', ['username' => $userSlug, 'artwork' => $artwork->id]) }}" onsubmit="return confirm('Delete unused image or archive purchased image?');">
+                                <a class="btn btn-outline-secondary btn-sm" href="{{ route('artworks.edit', ['artwork' => $artwork->id]) }}">Edit</a>
+                                <form method="POST" action="{{ route('artworks.destroy', ['artwork' => $artwork->id]) }}" onsubmit="return confirm('Delete unused image or archive purchased image?');">
                                     @csrf
                                     @method('DELETE')
                                     <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
@@ -404,7 +404,7 @@
                             <strong>{{ $item->artwork_title_snapshot }}</strong>
                             <span class="d-block text-muted small">Creator: {{ $item->creator_name_snapshot }}</span>
                         </span>
-                        <a class="btn btn-outline-primary btn-sm" href="{{ route('artworks.print-file', ['username' => $userSlug, 'artwork' => $item->product_id]) }}">Open file</a>
+                        <a class="btn btn-outline-primary btn-sm" href="{{ route('artworks.print-file', ['artwork' => $item->product_id]) }}">Open file</a>
                     </div>
                 @empty
                     <p class="text-muted mb-0">No bought images yet.</p>

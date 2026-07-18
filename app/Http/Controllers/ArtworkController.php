@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 
 class ArtworkController extends Controller
 {
-    public function index(string $username, Request $request)
+    public function index(Request $request)
     {
         $user = User::findOrFail(session('user_id'));
         $query = Artwork::with(['category', 'tags'])->where('user_id', $user->id)->latest();
@@ -37,6 +37,7 @@ class ArtworkController extends Controller
         return view('artworks.form', [
             'artwork' => new Artwork(['visibility' => 'private', 'is_printable' => true]),
             'categories' => Category::orderBy('name')->get(),
+            'suggestedTags' => $this->suggestedTagNames(),
             'mode' => 'create',
         ]);
     }
@@ -78,21 +79,22 @@ class ArtworkController extends Controller
         $this->syncTags($artwork, $request->input('tags'));
         AppNotification::create(['user_id' => $user->id, 'message' => 'Your artwork "' . $artwork->name . '" was uploaded.']);
 
-        return redirect()->route('artworks.index', ['username' => $user->slug])->with('success', 'Artwork uploaded.');
+        return redirect()->route('artworks.index')->with('success', 'Artwork uploaded.');
     }
 
-    public function edit(string $username, Artwork $artwork)
+    public function edit(Artwork $artwork)
     {
         $this->authorizeOwner($artwork);
 
         return view('artworks.form', [
             'artwork' => $artwork->load('tags'),
             'categories' => Category::orderBy('name')->get(),
+            'suggestedTags' => $this->suggestedTagNames(),
             'mode' => 'edit',
         ]);
     }
 
-    public function update(Request $request, string $username, Artwork $artwork)
+    public function update(Request $request, Artwork $artwork)
     {
         $this->authorizeOwner($artwork);
         $data = $this->validatedData($request, false);
@@ -112,24 +114,24 @@ class ArtworkController extends Controller
 
         $this->syncTags($artwork, $request->input('tags'));
 
-        return redirect()->route('artworks.index', ['username' => User::findOrFail(session('user_id'))->slug])->with('success', 'Artwork updated.');
+        return redirect()->route('artworks.index')->with('success', 'Artwork updated.');
     }
 
-    public function archive(string $username, Artwork $artwork)
+    public function archive(Artwork $artwork)
     {
         $this->authorizeOwner($artwork);
         $artwork->update(['visibility' => 'archived', 'archived_at' => now()]);
         return back()->with('success', 'Artwork archived.');
     }
 
-    public function restore(string $username, Artwork $artwork)
+    public function restore(Artwork $artwork)
     {
         $this->authorizeOwner($artwork);
         $artwork->update(['visibility' => 'private', 'archived_at' => null]);
         return back()->with('success', 'Artwork restored as private.');
     }
 
-    public function destroy(string $username, Artwork $artwork)
+    public function destroy(Artwork $artwork)
     {
         $this->authorizeOwner($artwork);
         if ($artwork->purchaseItems()->exists()) {
@@ -153,7 +155,7 @@ class ArtworkController extends Controller
         ]);
     }
 
-    public function printFile(string $username, Artwork $artwork)
+    public function printFile(Artwork $artwork)
     {
         $user = User::findOrFail(session('user_id'));
         $allowed = $user->role === 'admin'
@@ -180,7 +182,7 @@ class ArtworkController extends Controller
             'description' => ['nullable', 'string', 'max:2000'],
             'image' => [$requireImage ? 'required' : 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'category_id' => ['required', 'exists:categories,id'],
-            'tags' => ['nullable', 'string', 'max:255'],
+            'tags' => ['nullable', 'string', 'max:2000'],
             'visibility' => ['required', 'in:public,unlisted,private'],
             'is_printable' => ['nullable', 'boolean'],
             'creator_price' => ['required_if:is_printable,1', 'integer', 'min:0'],
@@ -194,13 +196,26 @@ class ArtworkController extends Controller
             ->filter()
             ->map(fn ($tag) => Str::title($tag))
             ->unique()
-            ->take(5)
             ->map(function ($tag) {
                 return Tag::firstOrCreate(['slug' => Str::slug($tag)], ['name' => $tag])->id;
             })
             ->all();
 
         $artwork->tags()->sync($tagIds);
+    }
+
+    private function suggestedTagNames(): array
+    {
+        $fallback = collect(['digitalart', 'fanart', 'magic', 'digitalpainting', 'wallpaper', 'animedrawing', 'adoptable']);
+
+        return Tag::orderBy('name')
+            ->pluck('name')
+            ->merge($fallback)
+            ->map(fn ($tag) => Str::of($tag)->replace(' ', '')->lower()->toString())
+            ->unique()
+            ->take(12)
+            ->values()
+            ->all();
     }
 
     private function authorizeOwner(Artwork $artwork): void

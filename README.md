@@ -61,8 +61,10 @@ Users:
 - Printbox handoff page: `/print-with-printbox`
 - User home: `/home`
 - User profile: `/account`
-- Personal artwork library: `/u/{username}/artworks`
+- Personal artwork library: `/artworks`
+- Upload artwork: `/artworks/create`
 - Cart: `/cart`
+- Artwork detail: `/artworks/{id}`
 - Purchase history: `/u/{username}/purchases`
 - Purchased artwork library: `/u/{username}/purchased-artworks`
 - Creator sales: `/u/{username}/sales`

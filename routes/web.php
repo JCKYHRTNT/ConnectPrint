@@ -38,11 +38,24 @@ Route::get('/creators/{user}', [CreatorController::class, 'show'])
 Route::view('/print-with-printbox', 'printbox')
     ->name('printbox');
 
+Route::middleware('auth.user')->group(function () {
+    Route::get('/artworks', [ArtworkController::class, 'index'])->name('artworks.index');
+    Route::get('/artworks/create', [ArtworkController::class, 'create'])->name('artworks.create');
+    Route::post('/artworks', [ArtworkController::class, 'store'])->name('artworks.store');
+    Route::get('/artworks/{artwork}/edit', [ArtworkController::class, 'edit'])->whereNumber('artwork')->name('artworks.edit');
+    Route::put('/artworks/{artwork}', [ArtworkController::class, 'update'])->whereNumber('artwork')->name('artworks.update');
+    Route::patch('/artworks/{artwork}/archive', [ArtworkController::class, 'archive'])->whereNumber('artwork')->name('artworks.archive');
+    Route::patch('/artworks/{artwork}/restore', [ArtworkController::class, 'restore'])->whereNumber('artwork')->name('artworks.restore');
+    Route::delete('/artworks/{artwork}', [ArtworkController::class, 'destroy'])->whereNumber('artwork')->name('artworks.destroy');
+    Route::get('/artworks/{artwork}/print-file', [ArtworkController::class, 'printFile'])->whereNumber('artwork')->name('artworks.print-file');
+});
+
 // User artwork detail
-Route::get('/u/{username}/artworks/{id}', [HomeController::class, 'artworkDetail'])
-    ->middleware('auth.user')
+Route::get('/u/{username}/artworks/{id}', function (string $username, int $id) {
+    return redirect()->route('artworks.show', ['id' => $id]);
+})
     ->whereNumber('id')
-    ->name('artworks.show.user');
+    ->name('artworks.show.user.legacy');
 
 // User cart
 Route::get('/cart', [CartController::class, 'index'])
@@ -68,15 +81,10 @@ Route::post('/cart/checkout', [CartController::class, 'checkout'])
     ->name('cart.checkout');
 
 Route::middleware('auth.user')->group(function () {
-    Route::get('/u/{username}/artworks', [ArtworkController::class, 'index'])->name('artworks.index');
-    Route::get('/u/{username}/artworks/create', [ArtworkController::class, 'create'])->name('artworks.create');
-    Route::post('/u/{username}/artworks', [ArtworkController::class, 'store'])->name('artworks.store');
-    Route::get('/u/{username}/artworks/{artwork}/edit', [ArtworkController::class, 'edit'])->name('artworks.edit');
-    Route::put('/u/{username}/artworks/{artwork}', [ArtworkController::class, 'update'])->name('artworks.update');
-    Route::patch('/u/{username}/artworks/{artwork}/archive', [ArtworkController::class, 'archive'])->name('artworks.archive');
-    Route::patch('/u/{username}/artworks/{artwork}/restore', [ArtworkController::class, 'restore'])->name('artworks.restore');
-    Route::delete('/u/{username}/artworks/{artwork}', [ArtworkController::class, 'destroy'])->name('artworks.destroy');
-    Route::get('/u/{username}/artworks/{artwork}/print-file', [ArtworkController::class, 'printFile'])->name('artworks.print-file');
+    Route::get('/u/{username}/artworks', fn (string $username) => redirect()->route('artworks.index', request()->query()))->name('artworks.index.legacy');
+    Route::get('/u/{username}/artworks/create', fn (string $username) => redirect()->route('artworks.create'))->name('artworks.create.legacy');
+    Route::get('/u/{username}/artworks/{artwork}/edit', fn (string $username, int $artwork) => redirect()->route('artworks.edit', ['artwork' => $artwork]))->whereNumber('artwork')->name('artworks.edit.legacy');
+    Route::get('/u/{username}/artworks/{artwork}/print-file', fn (string $username, int $artwork) => redirect()->route('artworks.print-file', ['artwork' => $artwork]))->whereNumber('artwork')->name('artworks.print-file.legacy');
 
     Route::get('/u/{username}/purchases', [PurchaseController::class, 'index'])->name('purchases.index');
     Route::get('/u/{username}/purchases/{purchase}', [PurchaseController::class, 'show'])->name('purchases.show');
