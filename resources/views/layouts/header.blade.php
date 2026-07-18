@@ -196,39 +196,12 @@
                     </a>
                 @endif
 
-                {{-- ADMIN --}}
-                @if($loggedIn && $isAdmin && str_starts_with(Route::currentRouteName(), 'admin.'))
-                    <a href="{{ route('admin.crud', ['username' => $userSlug]) }}"
-                    class="tb-pill-link d-inline-flex align-items-center"
-                    style="gap:0.35rem;">
-                        <img src="{{ asset('images/admin_icon.png') }}"
-                            alt="Admin"
-                            style="height:16px;width:16px;opacity:0.85;">
-                        Admin
-                    </a>
-                @endif
-
-                @if($loggedIn && $onUserContext)
-                    <a href="{{ route('artworks.index', ['username' => $userSlug]) }}" class="tb-pill-link d-inline-flex align-items-center" style="gap:0.35rem;">
-                        Own Images
-                    </a>
-                    <a href="{{ route('artworks.create', ['username' => $userSlug]) }}" class="tb-pill-link d-inline-flex align-items-center" style="gap:0.35rem;">
-                        Upload
-                    </a>
-                    <a href="{{ route('purchases.library', ['username' => $userSlug]) }}" class="tb-pill-link d-inline-flex align-items-center" style="gap:0.35rem;">
-                        Bought Files
-                    </a>
-                    <a href="{{ route('notifications.index', ['username' => $userSlug]) }}" class="tb-pill-link d-inline-flex align-items-center" style="gap:0.35rem;">
-                        Notifications
-                    </a>
-                @endif
-
                 <a href="{{ route('printbox') }}" class="tb-pill-link d-inline-flex align-items-center" style="gap:0.35rem;">
                     Printbox
                 </a>
 
                 {{-- CART --}}
-                @if($loggedIn && $onUserContext)
+                @if($loggedIn)
                     <a href="{{ route('cart', ['username' => $userSlug]) }}"
                     class="tb-pill-link d-inline-flex align-items-center"
                     style="gap:0.35rem;">

@@ -127,10 +127,29 @@ class ConnectPrintWorkflowTest extends TestCase
             'role' => $user->role,
         ])->get(route('account', ['username' => $user->slug]))
             ->assertOk()
-            ->assertSee('Upload image')
-            ->assertSee('Own images')
-            ->assertSee('Transaction history')
-            ->assertSee('Bought print files')
-            ->assertSee('Account settings');
+            ->assertSee('Account')
+            ->assertSee('Your Images')
+            ->assertSee('Transaction History')
+            ->assertSee('Account Settings');
+
+        $this->withSession([
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'role' => $user->role,
+        ])->get(route('account', ['username' => $user->slug, 'tab' => 'images']))
+            ->assertOk()
+            ->assertSee('Upload Image')
+            ->assertSee('Edit')
+            ->assertSee('Delete');
+
+        $this->withSession([
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'role' => $user->role,
+        ])->get(route('account', ['username' => $user->slug, 'tab' => 'history']))
+            ->assertOk()
+            ->assertSee('Images Sold')
+            ->assertSee('Images Bought')
+            ->assertSee('Printing Done');
     }
 }

@@ -3,16 +3,59 @@
 @section('title', 'Profile - ConnectPrint')
 
 @php
-    use Illuminate\Support\Str;
-
     /** @var \App\Models\User $user */
     $isAdmin = session('role') === 'admin';
     $userSlug = $user->slug;
+
+    $profileTabs = [
+        'account' => 'Account',
+        'images' => 'Your Images',
+        'history' => 'Transaction History',
+    ];
 @endphp
 
 @section('content')
 
 <style>
+    .cp-profile-nav {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        width: fit-content;
+        max-width: 100%;
+        overflow-x: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.7rem;
+        background: #ffffff;
+        padding: 0.25rem;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    }
+
+    .cp-profile-nav-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.2rem;
+        padding: 0.5rem 0.85rem;
+        border-radius: 0.5rem;
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 500;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .cp-profile-nav-link:hover {
+        color: #0f172a;
+        background: #f8fafc;
+    }
+
+    .cp-profile-nav-link.is-active {
+        color: #0f172a;
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.9);
+    }
+
     .cp-profile-header {
         display: grid;
         grid-template-columns: 96px minmax(0, 1fr);
@@ -35,11 +78,15 @@
         gap: 0.75rem;
     }
 
-    .cp-stat {
+    .cp-stat,
+    .cp-panel {
         border: 1px solid #e5e7eb;
         border-radius: 8px;
-        padding: 0.9rem;
         background: #ffffff;
+    }
+
+    .cp-stat {
+        padding: 0.9rem;
     }
 
     .cp-stat strong {
@@ -61,16 +108,22 @@
         gap: 1rem;
     }
 
-    .cp-artwork-thumb {
-        width: 100%;
-        height: 150px;
-        object-fit: cover;
-        border-radius: 8px;
-        background: #f8fafc;
+    .cp-artwork-card {
         border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #ffffff;
     }
 
-    .cp-list-link {
+    .cp-artwork-thumb {
+        width: 100%;
+        height: 170px;
+        object-fit: cover;
+        background: #f8fafc;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .cp-list-row {
         display: flex;
         justify-content: space-between;
         gap: 1rem;
@@ -79,9 +132,10 @@
         padding: 0.85rem;
         color: inherit;
         text-decoration: none;
+        background: #ffffff;
     }
 
-    .cp-list-link:hover {
+    .cp-list-row:hover {
         border-color: var(--tb-blue);
     }
 
@@ -137,6 +191,10 @@
         .cp-grid {
             grid-template-columns: 1fr;
         }
+
+        .cp-profile-nav {
+            width: 100%;
+        }
     }
 </style>
 
@@ -148,211 +206,231 @@
     <div class="alert alert-danger py-2">{{ session('error') }}</div>
 @endif
 
-<div class="tb-card p-4 p-md-5 mb-3">
-    <div class="cp-profile-header">
-        <div class="cp-avatar">
-            <img src="{{ $user->profile_image_url }}" alt="Profile picture" class="w-100 h-100" style="object-fit:cover;">
-        </div>
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+    <div>
+        <h1 style="font-size:1.65rem;font-weight:700;margin:0;">Profile</h1>
+    </div>
 
-        <div>
-            <p class="text-muted mb-1">Profile</p>
-            <h1 style="font-size:1.8rem;font-weight:700;margin-bottom:0.2rem;">{{ $user->name }}</h1>
-            <p style="margin:0;font-size:0.95rem;color:var(--tb-gray-text);">{{ $user->email }}</p>
-            <div class="cp-action-row mt-3">
-                <a class="tb-btn-primary" href="{{ route('artworks.create', ['username' => $userSlug]) }}">Upload image</a>
-                <a class="tb-btn-secondary" href="{{ route('artworks.index', ['username' => $userSlug]) }}">Own images</a>
-                <a class="tb-btn-secondary" href="{{ route('purchases.index', ['username' => $userSlug]) }}">Transaction history</a>
-                <a class="tb-btn-secondary" href="{{ route('purchases.library', ['username' => $userSlug]) }}">Bought print files</a>
+    <nav class="cp-profile-nav" aria-label="Profile navigation">
+        @foreach($profileTabs as $tabKey => $tabLabel)
+            <a
+                href="{{ route('account', ['username' => $userSlug, 'tab' => $tabKey]) }}"
+                class="cp-profile-nav-link {{ $activeTab === $tabKey ? 'is-active' : '' }}"
+                @if($activeTab === $tabKey) aria-current="page" @endif
+            >
+                {{ $tabLabel }}
+            </a>
+        @endforeach
+    </nav>
+</div>
+
+@if($activeTab === 'account')
+    <div class="tb-card p-4 p-md-5 mb-3">
+        <div class="cp-profile-header">
+            <div class="cp-avatar">
+                <img src="{{ $user->profile_image_url }}" alt="Profile picture" class="w-100 h-100" style="object-fit:cover;">
+            </div>
+
+            <div>
+                <p class="text-muted mb-1">Account</p>
+                <h2 style="font-size:1.45rem;font-weight:700;margin-bottom:0.2rem;">{{ $user->name }}</h2>
+                <p style="margin:0;font-size:0.95rem;color:var(--tb-gray-text);">{{ $user->email }}</p>
             </div>
         </div>
     </div>
-</div>
 
-<div class="cp-stat-grid mb-3">
-    <div class="cp-stat">
-        <span class="text-muted small">Own images</span>
-        <strong>{{ $artworkCount }}</strong>
-    </div>
-    <div class="cp-stat">
-        <span class="text-muted small">Public approved</span>
-        <strong>{{ $publicArtworkCount }}</strong>
-    </div>
-    <div class="cp-stat">
-        <span class="text-muted small">Purchases</span>
-        <strong>{{ $purchaseCount }}</strong>
-    </div>
-    <div class="cp-stat">
-        <span class="text-muted small">Sales</span>
-        <strong>{{ $saleCount }}</strong>
-    </div>
-</div>
-
-<div class="tb-card p-4 mb-3">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <h2 style="font-size:1.25rem;font-weight:700;margin:0;">Own images</h2>
-        <a class="btn btn-outline-primary btn-sm" href="{{ route('artworks.index', ['username' => $userSlug]) }}">Manage all</a>
-    </div>
-
-    @if($recentArtworks->isEmpty())
-        <div class="border rounded p-4 text-center">
-            <p class="text-muted mb-3">No uploaded images yet.</p>
-            <a class="tb-btn-primary" href="{{ route('artworks.create', ['username' => $userSlug]) }}">Upload image</a>
+    <div class="cp-stat-grid mb-3">
+        <div class="cp-stat">
+            <span class="text-muted small">Your images</span>
+            <strong>{{ $artworkCount }}</strong>
         </div>
-    @else
-        <div class="cp-grid">
-            @foreach($recentArtworks as $artwork)
-                <div class="border rounded p-3">
-                    <img src="{{ $artwork->image_url }}" alt="{{ $artwork->name }}" class="cp-artwork-thumb mb-2">
-                    <h3 style="font-size:1rem;font-weight:700;margin-bottom:0.35rem;">{{ $artwork->name }}</h3>
-                    <div class="d-flex gap-1 flex-wrap mb-2">
-                        <span class="badge text-bg-dark">{{ ucfirst($artwork->visibility) }}</span>
-                        <span class="badge text-bg-info">{{ ucfirst($artwork->moderation_status) }}</span>
-                        <span class="badge {{ $artwork->is_printable ? 'text-bg-primary' : 'text-bg-secondary' }}">
-                            {{ $artwork->is_printable ? 'Printable' : 'Display only' }}
-                        </span>
-                    </div>
-                    <div class="cp-card-actions">
-                        <a class="btn btn-outline-primary btn-sm" href="{{ route('artworks.show.user', ['username' => $userSlug, 'id' => $artwork->id]) }}">View</a>
-                        <a class="btn btn-outline-secondary btn-sm" href="{{ route('artworks.edit', ['username' => $userSlug, 'artwork' => $artwork->id]) }}">Edit</a>
-                        @if($artwork->original_path)
-                            <a class="btn btn-outline-secondary btn-sm" href="{{ route('artworks.print-file', ['username' => $userSlug, 'artwork' => $artwork->id]) }}">File</a>
-                        @endif
-                    </div>
-                </div>
-            @endforeach
+        <div class="cp-stat">
+            <span class="text-muted small">Public approved</span>
+            <strong>{{ $publicArtworkCount }}</strong>
         </div>
-    @endif
-</div>
-
-<div class="row g-3 mb-3">
-    <div class="col-lg-6">
-        <div class="tb-card p-4 h-100">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                <h2 style="font-size:1.25rem;font-weight:700;margin:0;">Transaction history</h2>
-                <a class="btn btn-outline-primary btn-sm" href="{{ route('purchases.index', ['username' => $userSlug]) }}">View all</a>
-            </div>
-
-            @forelse($recentPurchases as $purchase)
-                <a class="cp-list-link mb-2" href="{{ route('purchases.show', ['username' => $userSlug, 'purchase' => $purchase->id]) }}">
-                    <span>
-                        <strong>{{ $purchase->purchase_number }}</strong>
-                        <span class="d-block text-muted small">{{ $purchase->items->count() }} image(s) - {{ ucfirst($purchase->payment_status) }}</span>
-                    </span>
-                    <strong>Rp{{ number_format($purchase->total, 0, ',', '.') }}</strong>
-                </a>
-            @empty
-                <p class="text-muted mb-0">No purchase records yet.</p>
-            @endforelse
+        <div class="cp-stat">
+            <span class="text-muted small">Bought images</span>
+            <strong>{{ $purchaseCount }}</strong>
+        </div>
+        <div class="cp-stat">
+            <span class="text-muted small">Images sold</span>
+            <strong>{{ $saleCount }}</strong>
         </div>
     </div>
 
-    <div class="col-lg-6">
-        <div class="tb-card p-4 h-100">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                <h2 style="font-size:1.25rem;font-weight:700;margin:0;">Bought print files</h2>
-                <a class="btn btn-outline-primary btn-sm" href="{{ route('purchases.library', ['username' => $userSlug]) }}">View library</a>
-            </div>
+    <div class="tb-card p-4 mb-3">
+        <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;">Account Settings</h2>
 
-            @forelse($recentPurchasedItems as $item)
-                <div class="border rounded p-3 mb-2">
-                    <strong>{{ $item->artwork_title_snapshot }}</strong>
-                    <div class="text-muted small">Creator: {{ $item->creator_name_snapshot }}</div>
-                    <a class="btn btn-outline-primary btn-sm mt-2" href="{{ route('artworks.print-file', ['username' => $userSlug, 'artwork' => $item->product_id]) }}">Open file</a>
-                </div>
-            @empty
-                <p class="text-muted mb-0">No bought print files yet.</p>
-            @endforelse
-        </div>
-    </div>
-</div>
+        <div class="cp-action-row mb-3">
+            <button type="button" class="tb-btn-account tb-btn-account-edit" id="btnToggleEdit">Edit account</button>
+            <button type="button" class="tb-btn-account tb-btn-account-delete" id="btnToggleDelete">Delete account</button>
+            <a href="{{ route('logout') }}" class="tb-btn-account tb-btn-account-logout">Sign out</a>
 
-<div class="tb-card p-4 mb-3">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <h2 style="font-size:1.25rem;font-weight:700;margin:0;">Sales records</h2>
-        <a class="btn btn-outline-primary btn-sm" href="{{ route('sales', ['username' => $userSlug]) }}">View all</a>
-    </div>
-
-    @forelse($recentSales as $item)
-        <div class="cp-list-link mb-2">
-            <span>
-                <strong>{{ $item->artwork_title_snapshot }}</strong>
-                <span class="d-block text-muted small">
-                    Buyer: {{ $item->purchase->user->name ?? 'Unknown' }}
-                    @if($item->purchase)
-                        - {{ $item->purchase->purchase_number }}
-                    @endif
-                </span>
-            </span>
-            <strong>Rp{{ number_format($item->creator_price, 0, ',', '.') }}</strong>
-        </div>
-    @empty
-        <p class="text-muted mb-0">No sales records yet.</p>
-    @endforelse
-</div>
-
-<div class="tb-card p-4 mb-3">
-    <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;">Account settings</h2>
-
-    <div class="cp-action-row mb-3">
-        <button type="button" class="tb-btn-account tb-btn-account-edit" id="btnToggleEdit">Edit account</button>
-        <button type="button" class="tb-btn-account tb-btn-account-delete" id="btnToggleDelete">Delete account</button>
-        <a href="{{ route('logout') }}" class="tb-btn-account tb-btn-account-logout">Sign out</a>
-
-        @if($isAdmin)
-            @if($isAdminPage)
-                <a href="{{ route('home.user', ['username' => $userSlug]) }}" class="tb-btn-account tb-btn-account-role">User mode</a>
-            @else
-                <a href="{{ route('admin.user', ['username' => $userSlug]) }}" class="tb-btn-account tb-btn-account-role">Admin mode</a>
+            @if($isAdmin)
+                @if($isAdminPage)
+                    <a href="{{ route('home.user', ['username' => $userSlug]) }}" class="tb-btn-account tb-btn-account-role">User mode</a>
+                @else
+                    <a href="{{ route('admin.user', ['username' => $userSlug]) }}" class="tb-btn-account tb-btn-account-role">Admin mode</a>
+                @endif
             @endif
+        </div>
+
+        @php
+            $updateRoute = $isAdminPage
+                ? route('account.admin.update', ['username' => $userSlug])
+                : route('account.update', ['username' => $userSlug]);
+
+            $deleteRoute = $isAdminPage
+                ? route('account.admin.delete', ['username' => $userSlug])
+                : route('account.delete', ['username' => $userSlug]);
+        @endphp
+
+        <div id="editFormWrapper" class="d-none" style="max-width:420px;">
+            <form method="POST" action="{{ $updateRoute }}">
+                @csrf
+
+                <div class="mb-2">
+                    <label for="name" class="form-label">Name</label>
+                    <input type="text" id="name" name="name" class="form-control" value="{{ old('name', $user->name) }}" required>
+                </div>
+
+                <div class="mb-2">
+                    <label for="email" class="form-label">Email address</label>
+                    <input type="email" id="email" name="email" class="form-control" value="{{ old('email', $user->email) }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password_confirmation" class="form-label">Confirm password</label>
+                    <input type="password" id="password_confirmation" name="password_confirmation" class="form-control" required>
+                </div>
+
+                <button type="submit" class="tb-btn-account tb-btn-account-edit">Save changes</button>
+            </form>
+        </div>
+
+        <div id="deleteFormWrapper" class="d-none mt-3" style="max-width:420px;">
+            <form method="POST" action="{{ $deleteRoute }}" onsubmit="return confirm('Are you sure you want to delete your account?');">
+                @csrf
+
+                <div class="mb-2">
+                    <label for="delete_password_confirmation" class="form-label">Confirm password</label>
+                    <input type="password" id="delete_password_confirmation" name="password_confirmation" class="form-control" required>
+                </div>
+
+                <button type="submit" class="tb-btn-account tb-btn-account-delete">Confirm delete</button>
+            </form>
+        </div>
+    </div>
+@elseif($activeTab === 'images')
+    <div class="tb-card p-4 mb-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <h2 style="font-size:1.25rem;font-weight:700;margin:0;">Your Images</h2>
+                <p class="text-muted mb-0">Upload image files and manage your existing artwork cards.</p>
+            </div>
+            <a class="tb-btn-primary" href="{{ route('artworks.create', ['username' => $userSlug]) }}">Upload Image</a>
+        </div>
+
+        @if($artworks->isEmpty())
+            <div class="border rounded p-4 text-center">
+                <p class="text-muted mb-3">No images uploaded yet.</p>
+                <a class="tb-btn-primary" href="{{ route('artworks.create', ['username' => $userSlug]) }}">Upload Image</a>
+            </div>
+        @else
+            <div class="cp-grid">
+                @foreach($artworks as $artwork)
+                    <div class="cp-artwork-card">
+                        <a href="{{ route('artworks.show.user', ['username' => $userSlug, 'id' => $artwork->id]) }}">
+                            <img src="{{ $artwork->image_url }}" alt="{{ $artwork->name }}" class="cp-artwork-thumb">
+                        </a>
+                        <div class="p-3">
+                            <div class="d-flex gap-1 flex-wrap mb-2">
+                                <span class="badge text-bg-warning">{{ $artwork->category->name ?? 'Uncategorized' }}</span>
+                                <span class="badge {{ $artwork->is_printable ? 'text-bg-primary' : 'text-bg-secondary' }}">
+                                    {{ $artwork->is_printable ? 'Printable' : 'Display only' }}
+                                </span>
+                                <span class="badge text-bg-info">{{ ucfirst($artwork->moderation_status) }}</span>
+                                <span class="badge text-bg-dark">{{ ucfirst($artwork->visibility) }}</span>
+                            </div>
+                            <h3 class="mb-1" style="font-size:1rem;font-weight:700;">{{ $artwork->name }}</h3>
+                            <div class="text-muted small mb-2">{{ $artwork->original_filename ?: 'No original filename' }}</div>
+                            <div class="mt-2 mb-3" style="font-weight:700;color:var(--tb-blue);">Rp{{ number_format($artwork->price, 0, ',', '.') }}</div>
+                            <div class="cp-card-actions">
+                                <a class="btn btn-outline-secondary btn-sm" href="{{ route('artworks.edit', ['username' => $userSlug, 'artwork' => $artwork->id]) }}">Edit</a>
+                                <form method="POST" action="{{ route('artworks.destroy', ['username' => $userSlug, 'artwork' => $artwork->id]) }}" onsubmit="return confirm('Delete unused image or archive purchased image?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
         @endif
     </div>
+@else
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="tb-card p-4 h-100">
+                <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;">Images Sold</h2>
 
-    @php
-        $updateRoute = $isAdminPage
-            ? route('account.admin.update', ['username' => $userSlug])
-            : route('account.update', ['username' => $userSlug]);
-
-        $deleteRoute = $isAdminPage
-            ? route('account.admin.delete', ['username' => $userSlug])
-            : route('account.delete', ['username' => $userSlug]);
-    @endphp
-
-    <div id="editFormWrapper" class="d-none" style="max-width:420px;">
-        <form method="POST" action="{{ $updateRoute }}">
-            @csrf
-
-            <div class="mb-2">
-                <label for="name" class="form-label">Name</label>
-                <input type="text" id="name" name="name" class="form-control" value="{{ old('name', $user->name) }}" required>
+                @forelse($sales as $item)
+                    <div class="cp-list-row mb-2">
+                        <span>
+                            <strong>{{ $item->artwork_title_snapshot }}</strong>
+                            <span class="d-block text-muted small">
+                                Buyer: {{ $item->purchase->user->name ?? 'Unknown' }}
+                                @if($item->purchase)
+                                    - {{ $item->purchase->purchase_number }}
+                                @endif
+                            </span>
+                        </span>
+                        <strong>Rp{{ number_format($item->creator_price, 0, ',', '.') }}</strong>
+                    </div>
+                @empty
+                    <p class="text-muted mb-0">No sold images yet.</p>
+                @endforelse
             </div>
+        </div>
 
-            <div class="mb-2">
-                <label for="email" class="form-label">Email address</label>
-                <input type="email" id="email" name="email" class="form-control" value="{{ old('email', $user->email) }}" required>
+        <div class="col-lg-6">
+            <div class="tb-card p-4 h-100">
+                <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;">Images Bought</h2>
+
+                @forelse($purchasedItems as $item)
+                    <div class="cp-list-row mb-2">
+                        <span>
+                            <strong>{{ $item->artwork_title_snapshot }}</strong>
+                            <span class="d-block text-muted small">Creator: {{ $item->creator_name_snapshot }}</span>
+                        </span>
+                        <a class="btn btn-outline-primary btn-sm" href="{{ route('artworks.print-file', ['username' => $userSlug, 'artwork' => $item->product_id]) }}">Open file</a>
+                    </div>
+                @empty
+                    <p class="text-muted mb-0">No bought images yet.</p>
+                @endforelse
             </div>
-
-            <div class="mb-3">
-                <label for="password_confirmation" class="form-label">Confirm password</label>
-                <input type="password" id="password_confirmation" name="password_confirmation" class="form-control" required>
-            </div>
-
-            <button type="submit" class="tb-btn-account tb-btn-account-edit">Save changes</button>
-        </form>
+        </div>
     </div>
 
-    <div id="deleteFormWrapper" class="d-none mt-3" style="max-width:420px;">
-        <form method="POST" action="{{ $deleteRoute }}" onsubmit="return confirm('Are you sure you want to delete your account?');">
-            @csrf
+    <div class="tb-card p-4 mb-3">
+        <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;">Printing Done</h2>
 
-            <div class="mb-2">
-                <label for="delete_password_confirmation" class="form-label">Confirm password</label>
-                <input type="password" id="delete_password_confirmation" name="password_confirmation" class="form-control" required>
+        @forelse($purchasedItems as $item)
+            <div class="cp-list-row mb-2">
+                <span>
+                    <strong>{{ $item->artwork_title_snapshot }}</strong>
+                    <span class="d-block text-muted small">
+                        {{ $item->purchase->purchase_number ?? 'Purchase record' }} - ready for Printbox handoff
+                    </span>
+                </span>
+                <span class="text-muted small">{{ $item->purchase->created_at?->format('Y-m-d') }}</span>
             </div>
-
-            <button type="submit" class="tb-btn-account tb-btn-account-delete">Confirm delete</button>
-        </form>
+        @empty
+            <p class="text-muted mb-0">No printing records yet.</p>
+        @endforelse
     </div>
-</div>
+@endif
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {

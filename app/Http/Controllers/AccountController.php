@@ -26,7 +26,7 @@ class AccountController extends Controller
             return redirect()->route('account', ['username' => $expectedSlug]);
         }
 
-        return view('account', $this->accountViewData($user, false));
+        return view('account', $this->accountViewData($user, false, $request));
     }
 
     /**
@@ -45,7 +45,7 @@ class AccountController extends Controller
             return redirect()->route('account.admin', ['username' => $expectedSlug]);
         }
 
-        return view('account', $this->accountViewData($user, true));
+        return view('account', $this->accountViewData($user, true, $request));
     }
 
     /**
@@ -123,41 +123,43 @@ class AccountController extends Controller
         return redirect('/')->with('success', 'Account deleted.');
     }
 
-    private function accountViewData(User $user, bool $isAdminPage): array
+    private function accountViewData(User $user, bool $isAdminPage, Request $request): array
     {
-        $recentArtworks = Artwork::with(['category', 'tags'])
+        $activeTab = $request->input('tab', 'account');
+        if (! in_array($activeTab, ['account', 'images', 'history'], true)) {
+            $activeTab = 'account';
+        }
+
+        $artworks = Artwork::with(['category', 'tags'])
             ->where('user_id', $user->id)
             ->latest()
-            ->take(6)
             ->get();
 
-        $recentPurchases = $user->purchases()
+        $purchases = $user->purchases()
             ->with('items')
             ->latest()
-            ->take(5)
             ->get();
 
-        $recentPurchasedItems = PurchaseItem::with(['purchase', 'artwork.user'])
+        $purchasedItems = PurchaseItem::with(['purchase', 'artwork.user'])
             ->whereHas('purchase', fn ($query) => $query
                 ->where('user_id', $user->id)
                 ->where('status', 'completed'))
             ->latest()
-            ->take(6)
             ->get();
 
-        $recentSales = PurchaseItem::with(['purchase.user', 'artwork'])
+        $sales = PurchaseItem::with(['purchase.user', 'artwork'])
             ->where('creator_id', $user->id)
             ->latest()
-            ->take(5)
             ->get();
 
         return [
             'user' => $user,
             'isAdminPage' => $isAdminPage,
-            'recentArtworks' => $recentArtworks,
-            'recentPurchases' => $recentPurchases,
-            'recentPurchasedItems' => $recentPurchasedItems,
-            'recentSales' => $recentSales,
+            'activeTab' => $activeTab,
+            'artworks' => $artworks,
+            'purchases' => $purchases,
+            'purchasedItems' => $purchasedItems,
+            'sales' => $sales,
             'artworkCount' => Artwork::where('user_id', $user->id)->count(),
             'publicArtworkCount' => Artwork::where('user_id', $user->id)
                 ->where('visibility', 'public')

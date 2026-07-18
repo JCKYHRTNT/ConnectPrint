@@ -59,6 +59,23 @@ class HomeController extends Controller
         };
 
         $artworks = $artworksQuery->paginate(12)->withQueryString();
+        $viewer = session('user_id') ? User::find(session('user_id')) : null;
+        $ownArtworks = collect();
+        $ownArtworkCount = 0;
+        $pendingOwnArtworkCount = 0;
+
+        if ($viewer) {
+            $ownArtworks = Artwork::with('category')
+                ->where('user_id', $viewer->id)
+                ->latest()
+                ->take(3)
+                ->get();
+
+            $ownArtworkCount = Artwork::where('user_id', $viewer->id)->count();
+            $pendingOwnArtworkCount = Artwork::where('user_id', $viewer->id)
+                ->where('moderation_status', 'pending')
+                ->count();
+        }
 
         // RECENT CATEGORIES (max 3)
         $recentCategories = $categories;
@@ -83,6 +100,10 @@ class HomeController extends Controller
             'recentCategories' => $recentCategories,
             'categories'       => $categories,
             'categoryNames'    => $categoryNames,
+            'viewer'           => $viewer,
+            'ownArtworks'      => $ownArtworks,
+            'ownArtworkCount'  => $ownArtworkCount,
+            'pendingOwnArtworkCount' => $pendingOwnArtworkCount,
         ]);
     }
 
