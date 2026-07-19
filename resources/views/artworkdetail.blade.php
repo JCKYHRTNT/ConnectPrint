@@ -7,7 +7,7 @@
     $loggedIn = session('user_id') !== null;
     $userSlug = $loggedIn ? Str::slug(session('name')) : null;
     $isOwner = $viewer && (int) $viewer->id === (int) $artwork->user_id;
-    $alreadyPurchased = $viewer ? $viewer->hasPurchased($artwork) : false;
+    $canDownloadFile = $artwork->canDownloadFileBy($viewer);
 @endphp
 
 @section('content')
@@ -52,18 +52,16 @@
                 </div>
             @endif
 
-            <p class="small text-muted">Printbox charges its own application fee separately when you submit the file through Printbox.</p>
-
             <div class="d-flex gap-2 flex-wrap">
-                @if($isOwner || $alreadyPurchased || ($viewer && $viewer->role === 'admin'))
-                    <a class="tb-btn-primary" href="{{ route('artworks.print-file', ['artwork' => $artwork->id]) }}">Open print-ready file</a>
+                @if($canDownloadFile)
+                    <a class="tb-btn-primary" href="{{ route('artworks.print-file', ['artwork' => $artwork->id]) }}">Download file</a>
                     <a class="btn btn-outline-primary btn-sm" href="{{ route('printbox') }}">Printbox instructions</a>
                 @elseif(! $artwork->is_printable)
                     <button class="btn btn-secondary btn-sm" disabled>Display only - printing is not permitted</button>
                 @elseif($canPurchase)
                     <form method="POST" action="{{ route('cart.add', ['artwork' => $artwork->id]) }}">
                         @csrf
-                        <button class="tb-btn-primary" type="submit">Add printable access to cart</button>
+                        <button class="tb-btn-primary" type="submit">Add to cart</button>
                     </form>
                 @elseif($loggedIn)
                     <button class="btn btn-secondary btn-sm" disabled>Not available for purchase</button>

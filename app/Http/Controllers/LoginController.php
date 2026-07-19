@@ -28,8 +28,10 @@ class LoginController extends Controller
             return back()->with('error', 'Invalid email or password.');
         }
 
-        // Store user info into session
-        session([
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        $request->session()->put([
             'user_id' => $user->id,
             'name'    => $user->name,
             'role'    => $user->role,
@@ -69,7 +71,10 @@ class LoginController extends Controller
             'profpic'  => null,
         ]);
 
-        session([
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        $request->session()->put([
             'user_id' => $user->id,
             'name'    => $user->name,
             'role'    => $user->role,
@@ -81,9 +86,10 @@ class LoginController extends Controller
     }
 
     // LOGOUT
-    public function logout()
+    public function logout(Request $request)
     {
-        session()->flush();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return redirect('/')->with('success', 'Logged out.');
     }

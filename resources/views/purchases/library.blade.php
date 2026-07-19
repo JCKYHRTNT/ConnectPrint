@@ -30,7 +30,7 @@
                                 Purchased {{ $item->purchase->created_at->format('Y-m-d') }} for Rp{{ number_format($item->creator_price, 0, ',', '.') }}
                             </div>
                             <div class="d-flex gap-2 flex-wrap">
-                                @if($item->artwork)
+                                @if($item->artwork && $item->artwork->canDownloadFileBy($viewer))
                                     <a class="btn btn-outline-primary btn-sm" href="{{ route('artworks.print-file', ['artwork' => $item->product_id]) }}">Open print-ready file</a>
                                 @endif
                                 <a class="btn btn-outline-secondary btn-sm" href="{{ route('printbox') }}">Printbox instructions</a>

@@ -111,7 +111,7 @@ class Product extends Model
 
     public function canBePurchasedBy(?User $user): bool
     {
-        if (! $user || ! $this->is_printable || $this->isArchived()) {
+        if (! $user || ! $this->is_printable || (int) $this->price <= 0 || $this->isArchived()) {
             return false;
         }
 
@@ -128,5 +128,30 @@ class Product extends Model
         }
 
         return ! $user->hasPurchased($this);
+    }
+
+    public function canDownloadFileBy(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ((int) $this->user_id === (int) $user->id) {
+            return true;
+        }
+
+        if (! $this->is_printable || (int) $this->price <= 0 || $this->isArchived()) {
+            return false;
+        }
+
+        if (! in_array($this->visibility, ['public', 'unlisted'], true)) {
+            return false;
+        }
+
+        if (in_array($this->moderation_status, ['draft', 'rejected'], true)) {
+            return false;
+        }
+
+        return $user->hasPurchased($this);
     }
 }

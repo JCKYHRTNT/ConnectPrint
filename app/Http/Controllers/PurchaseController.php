@@ -21,7 +21,10 @@ class PurchaseController extends Controller
         $user = User::findOrFail(session('user_id'));
         abort_unless((int) $purchase->user_id === (int) $user->id || $user->role === 'admin', 403);
 
-        return view('purchases.show', ['purchase' => $purchase->load('items.artwork')]);
+        return view('purchases.show', [
+            'purchase' => $purchase->load('items.artwork'),
+            'viewer' => $user,
+        ]);
     }
 
     public function purchasedArtworks()
@@ -32,7 +35,10 @@ class PurchaseController extends Controller
             ->latest()
             ->paginate(12);
 
-        return view('purchases.library', ['items' => $items]);
+        return view('purchases.library', [
+            'items' => $items,
+            'viewer' => $user,
+        ]);
     }
 
     public function sales()

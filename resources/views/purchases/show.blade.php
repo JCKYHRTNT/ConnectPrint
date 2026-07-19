@@ -14,7 +14,7 @@
                 <strong>Rp{{ number_format($item->creator_price, 0, ',', '.') }}</strong>
             </div>
             <div class="text-muted small">Creator: {{ $item->creator_name_snapshot }}</div>
-            @if($item->artwork)
+            @if($item->artwork && $item->artwork->canDownloadFileBy($viewer))
                 <a class="btn btn-outline-primary btn-sm mt-2" href="{{ route('artworks.print-file', ['artwork' => $item->product_id]) }}">Open print-ready file</a>
             @endif
         </div>

@@ -260,11 +260,8 @@ class ArtworkController extends Controller
     public function printFile(Artwork $artwork)
     {
         $user = User::findOrFail(session('user_id'));
-        $allowed = $user->role === 'admin'
-            || (int) $artwork->user_id === (int) $user->id
-            || $user->hasPurchased($artwork);
 
-        abort_unless($allowed, 403);
+        abort_unless($artwork->canDownloadFileBy($user), 403);
 
         if ($artwork->original_path && Storage::exists($artwork->original_path)) {
             return Storage::download($artwork->original_path, $artwork->original_filename ?: $artwork->name);
