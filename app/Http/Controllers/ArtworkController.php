@@ -15,25 +15,6 @@ use Illuminate\Support\Str;
 
 class ArtworkController extends Controller
 {
-    public function index(Request $request)
-    {
-        $user = User::findOrFail(session('user_id'));
-        $query = Artwork::with(['category', 'tags'])->where('user_id', $user->id)->latest();
-
-        if ($request->filled('filter') && $request->filter !== 'all') {
-            match ($request->filter) {
-                'printable' => $query->where('is_printable', true),
-                'display-only' => $query->where('is_printable', false),
-                'draft' => $query->where('moderation_status', 'draft'),
-                default => $query->where('visibility', $request->filter),
-            };
-        }
-
-        return view('artworks.index', [
-            'artworks' => $query->paginate(12)->withQueryString(),
-        ]);
-    }
-
     public function create()
     {
         return view('artworks.form', [
@@ -70,14 +51,15 @@ class ArtworkController extends Controller
             'visibility' => $data['visibility'],
             'share_token' => $data['visibility'] === 'unlisted' ? Str::random(40) : null,
             'is_printable' => $request->boolean('is_printable'),
-            'moderation_status' => $data['visibility'] === 'private' ? 'approved' : 'pending',
+            'moderation_status' => 'approved',
             'published_at' => $data['visibility'] === 'private' ? null : now(),
+            'archived_at' => null,
         ]);
 
         $this->syncTags($artwork, $request->input('tags'));
         AppNotification::create(['user_id' => $user->id, 'message' => 'Your artwork "' . $artwork->name . '" was uploaded.']);
 
-        return redirect()->route('artworks.index')->with('success', 'Artwork uploaded.');
+        return redirect()->route('account', ['tab' => 'images'])->with('success', 'Artwork uploaded.');
     }
 
     public function edit(Artwork $artwork)
@@ -96,7 +78,6 @@ class ArtworkController extends Controller
     {
         $this->authorizeOwner($artwork);
         $data = $this->validatedData($request, false);
-        $visibilityChanged = $artwork->visibility !== $data['visibility'];
 
         $updates = [
             'name' => $data['title'],
@@ -106,10 +87,9 @@ class ArtworkController extends Controller
             'share_token' => $data['visibility'] === 'unlisted' ? ($artwork->share_token ?: Str::random(40)) : null,
             'is_printable' => $request->boolean('is_printable'),
             'price' => $request->boolean('is_printable') ? (int) $data['creator_price'] : 0,
-            'moderation_status' => $data['visibility'] === 'private'
-                ? 'approved'
-                : ($visibilityChanged ? 'pending' : $artwork->moderation_status),
+            'moderation_status' => 'approved',
             'published_at' => $data['visibility'] !== 'private' ? ($artwork->published_at ?: now()) : null,
+            'archived_at' => null,
         ];
 
         if ($request->hasFile('image')) {
@@ -121,7 +101,7 @@ class ArtworkController extends Controller
 
         $this->syncTags($artwork, $request->input('tags'));
 
-        return redirect()->route('artworks.index')->with('success', 'Artwork updated.');
+        return redirect()->route('account', ['tab' => 'images'])->with('success', 'Artwork updated.');
     }
 
     public function saveDraft(Request $request, ?Artwork $artwork = null)
@@ -167,6 +147,7 @@ class ArtworkController extends Controller
             'is_printable' => $request->boolean('is_printable'),
             'moderation_status' => 'draft',
             'published_at' => null,
+            'archived_at' => null,
         ];
 
         if ($request->hasFile('image')) {
@@ -213,7 +194,7 @@ class ArtworkController extends Controller
     {
         $this->authorizeOwner($artwork);
         $artwork->update(['visibility' => 'private', 'archived_at' => null]);
-        return back()->with('success', 'Artwork restored as private.');
+        return back()->with('success', 'Artwork unarchived as private.');
     }
 
     public function destroy(Artwork $artwork)
@@ -230,7 +211,11 @@ class ArtworkController extends Controller
     public function shared(string $shareToken)
     {
         $artwork = Artwork::with(['category', 'user', 'tags'])->where('share_token', $shareToken)->firstOrFail();
-        if ($artwork->visibility !== 'unlisted' || $artwork->isArchived()) {
+        if (
+            $artwork->visibility !== 'unlisted'
+            || in_array($artwork->moderation_status, ['draft', 'rejected'], true)
+            || $artwork->isArchived()
+        ) {
             abort(404);
         }
         return view('artworkdetail', [
@@ -246,9 +231,10 @@ class ArtworkController extends Controller
         $isOwner = $viewer && (int) $viewer->id === (int) $artwork->user_id;
         $isAdmin = $viewer && $viewer->role === 'admin';
         $isPublic = $artwork->visibility === 'public'
-            && $artwork->moderation_status === 'approved'
+            && ! in_array($artwork->moderation_status, ['draft', 'rejected'], true)
             && ! $artwork->isArchived();
         $isUnlisted = $artwork->visibility === 'unlisted'
+            && ! in_array($artwork->moderation_status, ['draft', 'rejected'], true)
             && ! $artwork->isArchived();
 
         abort_unless($isOwner || $isAdmin || $isPublic || $isUnlisted, 403);

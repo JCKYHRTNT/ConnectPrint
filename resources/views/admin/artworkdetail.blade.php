@@ -78,7 +78,12 @@
                 Rp{{ number_format($artwork->price, 0, ',', '.') }}
             </p>
 
-            <p style="font-size:0.9rem;font-weight:500;color:#111827;margin-bottom:0.25rem;">{{ $artwork->is_printable ? 'Printable access' : 'Display only' }} - {{ ucfirst($artwork->moderation_status) }}</p>
+            <p style="font-size:0.9rem;font-weight:500;color:#111827;margin-bottom:0.25rem;">
+                {{ $artwork->is_printable ? 'Printable access' : 'Display only' }}
+                @if(in_array($artwork->moderation_status, ['draft', 'rejected'], true))
+                    - {{ ucfirst($artwork->moderation_status) }}
+                @endif
+            </p>
 
             {{-- DESCRIPTION --}}
             <p style="font-size:0.9rem;color:var(--tb-gray-text);  white-space:pre-line;">

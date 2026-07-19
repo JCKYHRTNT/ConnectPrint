@@ -28,11 +28,23 @@
         background: #ffffff;
     }
 
-    .cp-tag-list,
+    .cp-tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
     .cp-suggested-tags {
         display: flex;
         flex-wrap: wrap;
         gap: 0.5rem;
+        width: min(36rem, 100%);
+        max-height: 7.5rem;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 0.4rem;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
     }
 
     .cp-tag-chip {
@@ -70,6 +82,7 @@
         background: #ffffff;
         color: #64748b;
         font-weight: 600;
+        white-space: nowrap;
     }
 
     .cp-image-preview {

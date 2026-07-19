@@ -41,8 +41,7 @@ class HomeController extends Controller
 
         $artworksQuery = Artwork::with(['category', 'user', 'tags'])
             ->where('visibility', 'public')
-            ->where('moderation_status', 'approved')
-            ->whereNull('archived_at');
+            ->whereNotIn('moderation_status', ['draft', 'rejected']);
 
         // FILTER BY CATEGORY
         if ($categoryIds->isNotEmpty()) {
@@ -90,7 +89,6 @@ class HomeController extends Controller
         $viewer = session('user_id') ? User::find(session('user_id')) : null;
         $ownArtworks = collect();
         $ownArtworkCount = 0;
-        $pendingOwnArtworkCount = 0;
 
         if ($viewer) {
             $ownArtworks = Artwork::with('category')
@@ -100,9 +98,6 @@ class HomeController extends Controller
                 ->get();
 
             $ownArtworkCount = Artwork::where('user_id', $viewer->id)->count();
-            $pendingOwnArtworkCount = Artwork::where('user_id', $viewer->id)
-                ->where('moderation_status', 'pending')
-                ->count();
         }
 
         // RECENT CATEGORIES (max 3)
@@ -134,7 +129,6 @@ class HomeController extends Controller
             'viewer'           => $viewer,
             'ownArtworks'      => $ownArtworks,
             'ownArtworkCount'  => $ownArtworkCount,
-            'pendingOwnArtworkCount' => $pendingOwnArtworkCount,
         ]);
     }
 
@@ -178,7 +172,7 @@ class HomeController extends Controller
         $sessionName  = session('name');
         $expectedSlug = Str::slug($sessionName);
 
-        // Prevent accessing another user’s URL
+        // Prevent accessing another user's URL
         if ($username !== null && $username !== $expectedSlug) {
             return redirect()->route('home.user', $request->query());
         }

@@ -99,13 +99,13 @@ class Product extends Model
 
     public function isArchived(): bool
     {
-        return $this->visibility === 'archived' || $this->archived_at !== null;
+        return $this->visibility === 'archived';
     }
 
     public function isApprovedPublic(): bool
     {
         return $this->visibility === 'public'
-            && $this->moderation_status === 'approved'
+            && ! in_array($this->moderation_status, ['draft', 'rejected'], true)
             && ! $this->isArchived();
     }
 
@@ -123,7 +123,7 @@ class Product extends Model
             return false;
         }
 
-        if ($this->moderation_status !== 'approved') {
+        if (in_array($this->moderation_status, ['draft', 'rejected'], true)) {
             return false;
         }
 

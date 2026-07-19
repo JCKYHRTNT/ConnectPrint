@@ -43,7 +43,7 @@ Route::view('/print-with-printbox', 'printbox')
     ->name('printbox');
 
 Route::middleware('auth.user')->group(function () {
-    Route::get('/artworks', [ArtworkController::class, 'index'])->name('artworks.index');
+    Route::get('/artworks', fn () => redirect()->route('account', ['tab' => 'images']))->name('artworks.index');
     Route::get('/artworks/create', [ArtworkController::class, 'create'])->name('artworks.create');
     Route::post('/artworks', [ArtworkController::class, 'store'])->name('artworks.store');
     Route::post('/artworks/draft', [ArtworkController::class, 'saveDraft'])->name('artworks.draft.store');
@@ -54,6 +54,7 @@ Route::middleware('auth.user')->group(function () {
     Route::patch('/artworks/{artwork}/restore', [ArtworkController::class, 'restore'])->whereNumber('artwork')->name('artworks.restore');
     Route::delete('/artworks/{artwork}', [ArtworkController::class, 'destroy'])->whereNumber('artwork')->name('artworks.destroy');
     Route::get('/artworks/{artwork}/print-file', [ArtworkController::class, 'printFile'])->whereNumber('artwork')->name('artworks.print-file');
+    Route::get('/purchased-artworks', fn () => redirect()->route('purchases.library'))->name('purchases.library.short-legacy');
 });
 
 // User artwork detail
@@ -94,7 +95,7 @@ Route::middleware('auth.user')->group(function () {
 
     Route::get('/u/{username}/purchases', [PurchaseController::class, 'index'])->name('purchases.index');
     Route::get('/u/{username}/purchases/{purchase}', [PurchaseController::class, 'show'])->name('purchases.show');
-    Route::get('/u/{username}/purchased-artworks', [PurchaseController::class, 'purchasedArtworks'])->name('purchases.library');
+    Route::get('/u/{username}/purchased-artworks', fn () => redirect()->route('purchases.library'))->name('purchases.library.legacy');
     Route::get('/u/{username}/sales', [PurchaseController::class, 'sales'])->name('sales');
 
     Route::get('/u/{username}/notifications', [NotificationController::class, 'index'])->name('notifications.index');
@@ -110,6 +111,10 @@ Route::post('/artworks/{artwork}/reports', [ArtworkReportController::class, 'sto
 Route::get('/account', [AccountController::class, 'userAccount'])
     ->middleware('auth.user')
     ->name('account');
+
+Route::get('/account/images-bought', [PurchaseController::class, 'purchasedArtworks'])
+    ->middleware('auth.user')
+    ->name('purchases.library');
 
 Route::get('/u/{username}/account', function () {
     return redirect()->route('account', request()->query());
@@ -187,9 +192,6 @@ Route::middleware('admin')->group(function () {
     Route::delete('/a/{username}/artworks/{artwork}', [AdminController::class, 'destroyArtwork'])
         ->whereNumber('artwork')
         ->name('admin.artworks.destroy');
-
-    Route::patch('/a/{username}/admin/artworks/{artwork}/moderate', [AdminController::class, 'moderateArtwork'])
-        ->name('admin.artworks.moderate');
 
     Route::patch('/a/{username}/admin/reports/{report}', [AdminController::class, 'resolveReport'])
         ->name('admin.reports.resolve');

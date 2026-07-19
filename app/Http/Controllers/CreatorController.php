@@ -14,8 +14,7 @@ class CreatorController extends Controller
             'artworks' => Artwork::with('category')
                 ->where('user_id', $user->id)
                 ->where('visibility', 'public')
-                ->where('moderation_status', 'approved')
-                ->whereNull('archived_at')
+                ->whereNotIn('moderation_status', ['draft', 'rejected'])
                 ->latest()
                 ->paginate(12),
         ]);

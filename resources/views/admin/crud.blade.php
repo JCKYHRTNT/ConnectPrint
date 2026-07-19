@@ -96,35 +96,6 @@
         </div>
     </div>
 
-    {{-- CATEGORY LIST --}}
-    <h2 style="font-size:1rem;font-weight:600;margin-bottom:0.5rem;">Pending artwork moderation</h2>
-    <div class="tb-card p-3 mb-4">
-        @if(($pendingArtworks ?? collect())->isEmpty())
-            <p class="mb-0 text-muted">No pending artworks.</p>
-        @else
-            @foreach($pendingArtworks as $artwork)
-                <form method="POST" action="{{ route('admin.artworks.moderate', ['username' => $adminSlug, 'artwork' => $artwork->id]) }}" class="border rounded p-3 mb-2">
-                    @csrf
-                    @method('PATCH')
-                    <div class="d-flex justify-content-between gap-2 flex-wrap">
-                        <div>
-                            <strong>{{ $artwork->name }}</strong>
-                            <div class="text-muted small">Creator: {{ $artwork->user->name ?? 'Unknown' }}</div>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <select name="moderation_status" class="form-select form-select-sm">
-                                <option value="approved">Approve</option>
-                                <option value="rejected">Reject</option>
-                            </select>
-                            <input class="form-control form-control-sm" name="moderation_reason" placeholder="Reason">
-                            <button class="tb-btn-secondary" type="submit">Save</button>
-                        </div>
-                    </div>
-                </form>
-            @endforeach
-        @endif
-    </div>
-
     <h2 style="font-size:1rem;font-weight:600;margin-bottom:0.5rem;">Open artwork reports</h2>
     <div class="tb-card p-3 mb-4">
         @if(($reports ?? collect())->isEmpty())

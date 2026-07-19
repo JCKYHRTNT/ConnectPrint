@@ -76,9 +76,11 @@
     }
 
     .cp-suggested-tag-menu {
-        max-height: 12rem;
+        width: 100%;
+        max-width: 100%;
+        max-height: 7.25rem;
+        overflow-x: hidden;
         overflow-y: auto;
-        width: min(24rem, 85vw);
     }
 
     .cp-suggested-tag-list {
@@ -132,6 +134,7 @@
         width: auto;
         text-align: center;
         background: #ffffff;
+        white-space: nowrap;
     }
 
     .cp-suggested-tag.is-selected {
@@ -203,7 +206,7 @@
             </div>
         </div>
         <div>
-            <div class="dropdown">
+            <div class="dropdown w-100">
                 <button
                     class="form-select text-start"
                     type="button"
@@ -255,7 +258,7 @@
             </select>
         </div>
         <div class="cp-filter-footer">
-            <div class="dropdown">
+            <div class="dropdown w-100">
                 <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                     Suggested tags
                 </button>
@@ -283,7 +286,7 @@
     data-has-more="{{ $artworks->hasMorePages() ? '1' : '0' }}"
 >
     @if($artworks->count() === 0)
-        <div class="tb-card p-4">No approved public artwork found.</div>
+        <div class="tb-card p-4">No public artwork found.</div>
     @else
         <div class="row g-3" data-cursor-list>
             @foreach($artworks as $artwork)

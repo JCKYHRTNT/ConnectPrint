@@ -6,7 +6,6 @@ use App\Models\Product as Artwork;
 use App\Models\Category;
 use App\Models\User;
 use App\Models\ArtworkReport;
-use App\Models\AppNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -158,7 +157,6 @@ class AdminController extends Controller
             'categories'      => Category::orderBy('id')->get(),
             'eligibleUsers'   => $eligibleUsers,
             'demotableAdmins' => $demotableAdmins,
-            'pendingArtworks' => Artwork::with('user')->where('moderation_status', 'pending')->latest()->get(),
             'reports' => ArtworkReport::with(['artwork', 'reporter'])->where('status', 'open')->latest()->get(),
         ]);
     }
@@ -303,25 +301,6 @@ class AdminController extends Controller
         return redirect()
             ->route('admin.artworks.show', ['username' => $admin->slug, 'artwork' => $artwork->id])
             ->with('status', 'Artwork updated.');
-    }
-
-    public function moderateArtwork(Request $request, string $username, Artwork $artwork)
-    {
-        $data = $request->validate([
-            'moderation_status' => ['required', 'in:approved,rejected'],
-            'moderation_reason' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        $artwork->update($data);
-
-        if ($artwork->user_id) {
-            AppNotification::create([
-                'user_id' => $artwork->user_id,
-                'message' => 'Your artwork "' . $artwork->name . '" was ' . $data['moderation_status'] . '.',
-            ]);
-        }
-
-        return back()->with('status', 'Artwork moderation updated.');
     }
 
     public function resolveReport(Request $request, string $username, ArtworkReport $report)

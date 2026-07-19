@@ -118,14 +118,6 @@
         background: #ffffff;
     }
 
-    .cp-artwork-thumb {
-        width: 100%;
-        height: 170px;
-        object-fit: cover;
-        background: #f8fafc;
-        border-bottom: 1px solid #e5e7eb;
-    }
-
     .cp-list-row {
         display: flex;
         justify-content: space-between;
@@ -248,7 +240,7 @@
             <strong>{{ $artworkCount }}</strong>
         </div>
         <div class="cp-stat">
-            <span class="text-muted small">Public approved</span>
+            <span class="text-muted small">Public images</span>
             <strong>{{ $publicArtworkCount }}</strong>
         </div>
         <div class="cp-stat">
@@ -329,7 +321,6 @@
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
             <div>
                 <h2 style="font-size:1.25rem;font-weight:700;margin:0;">Your Images</h2>
-                <p class="text-muted mb-0">Upload image files and manage your existing artwork cards.</p>
             </div>
             <a class="tb-btn-primary" href="{{ route('artworks.create') }}">Upload Image</a>
         </div>
@@ -382,7 +373,9 @@
 
         <div class="col-lg-6">
             <div class="tb-card p-4 h-100">
-                <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;">Images Bought</h2>
+                <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;">
+                    <a href="{{ route('purchases.library') }}" style="color:inherit;text-decoration:none;">Images Bought</a>
+                </h2>
 
                 @forelse($purchasedItems as $item)
                     <div class="cp-list-row mb-2">
@@ -436,6 +429,40 @@
                 delWrap.classList.toggle('d-none');
             });
         }
+
+        document.addEventListener('click', function (event) {
+            const copyButton = event.target.closest('[data-copy-artwork-link]');
+
+            if (!copyButton) {
+                return;
+            }
+
+            const link = copyButton.dataset.copyArtworkLink;
+            const originalText = copyButton.textContent;
+
+            function markCopied() {
+                copyButton.textContent = 'Copied';
+                window.setTimeout(function () {
+                    copyButton.textContent = originalText;
+                }, 1200);
+            }
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(link).then(markCopied);
+                return;
+            }
+
+            const input = document.createElement('input');
+            input.value = link;
+            input.setAttribute('readonly', 'readonly');
+            input.style.position = 'fixed';
+            input.style.opacity = '0';
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            input.remove();
+            markCopied();
+        });
     });
 </script>
 

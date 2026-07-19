@@ -17,8 +17,8 @@
 
     <div class="row g-4">
         <div class="col-md-5">
-            <div class="ratio ratio-4x3">
-                <img src="{{ $artwork->image_url }}" alt="{{ $artwork->name }}" class="w-100 h-100" style="object-fit:cover;">
+            <div class="cp-artwork-frame cp-artwork-frame-detail">
+                <img src="{{ $artwork->image_url }}" alt="{{ $artwork->name }}" class="cp-artwork-image-contained">
             </div>
         </div>
         <div class="col-md-7">
@@ -27,13 +27,21 @@
                 <span class="badge {{ $artwork->is_printable ? 'text-bg-primary' : 'text-bg-secondary' }}">{{ $artwork->is_printable ? 'Printable' : 'Display only' }}</span>
                 @if($isOwner || ($viewer && $viewer->role === 'admin'))
                     <span class="badge text-bg-dark">{{ ucfirst($artwork->visibility) }}</span>
-                    <span class="badge text-bg-info">{{ ucfirst($artwork->moderation_status) }}</span>
+                    @if(in_array($artwork->moderation_status, ['draft', 'rejected'], true))
+                        <span class="badge text-bg-info">{{ ucfirst($artwork->moderation_status) }}</span>
+                    @endif
                 @endif
             </div>
 
             <h1 style="font-size:1.6rem;font-weight:700;">{{ $artwork->name }}</h1>
             <p class="mb-1">Creator: <a href="{{ route('creators.show', $artwork->user_id ?: 1) }}" style="color:var(--tb-blue);">{{ $artwork->creatorName() }}</a></p>
-            <p style="font-size:1.1rem;font-weight:700;color:var(--tb-blue);">Rp{{ number_format($artwork->price, 0, ',', '.') }}</p>
+            <p style="font-size:1.1rem;font-weight:700;color:var(--tb-blue);">
+                @if($artwork->is_printable && (int) $artwork->price > 0)
+                    Rp{{ number_format($artwork->price, 0, ',', '.') }}
+                @else
+                    &nbsp;
+                @endif
+            </p>
             <p style="white-space:pre-line;color:var(--tb-gray-text);">{{ $artwork->description ?: 'No description available.' }}</p>
 
             @if($artwork->tags->isNotEmpty())

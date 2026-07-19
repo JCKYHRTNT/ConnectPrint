@@ -175,7 +175,7 @@ class AccountController extends Controller
             'artworkCount' => Artwork::where('user_id', $user->id)->count(),
             'publicArtworkCount' => Artwork::where('user_id', $user->id)
                 ->where('visibility', 'public')
-                ->where('moderation_status', 'approved')
+                ->whereNotIn('moderation_status', ['draft', 'rejected'])
                 ->count(),
             'purchaseCount' => $user->purchases()->count(),
             'saleCount' => PurchaseItem::where('creator_id', $user->id)->count(),
@@ -184,7 +184,7 @@ class AccountController extends Controller
 
     private function accountImagesQuery(User $user)
     {
-        return Artwork::with(['category', 'tags'])
+        return Artwork::with(['category', 'tags', 'user'])
             ->where('user_id', $user->id)
             ->orderByDesc('created_at')
             ->orderByDesc('id');
