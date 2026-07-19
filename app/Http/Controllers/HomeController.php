@@ -76,12 +76,17 @@ class HomeController extends Controller
         }
 
         match ($request->input('sort')) {
-            'price_asc' => $artworksQuery->orderBy('price'),
-            'price_desc' => $artworksQuery->orderByDesc('price'),
-            default => $artworksQuery->latest(),
+            'price_asc' => $artworksQuery->orderBy('price')->orderBy('id'),
+            'price_desc' => $artworksQuery->orderByDesc('price')->orderByDesc('id'),
+            default => $artworksQuery->orderByDesc('created_at')->orderByDesc('id'),
         };
 
-        $artworks = $artworksQuery->paginate(12)->withQueryString();
+        $artworks = $artworksQuery->cursorPaginate(12)->withQueryString();
+
+        if ($request->expectsJson()) {
+            return response()->json($this->cursorPayload($artworks, 'artworks.partials.marketplace-card'));
+        }
+
         $viewer = session('user_id') ? User::find(session('user_id')) : null;
         $ownArtworks = collect();
         $ownArtworkCount = 0;
@@ -146,6 +151,19 @@ class HomeController extends Controller
             ->take(12)
             ->values()
             ->all();
+    }
+
+    private function cursorPayload($paginator, string $partial): array
+    {
+        return [
+            'data' => collect($paginator->items())
+                ->map(fn ($artwork) => view($partial, ['artwork' => $artwork])->render())
+                ->values()
+                ->all(),
+            'next_cursor' => $paginator->nextCursor()?->encode(),
+            'has_more' => $paginator->hasMorePages(),
+            'total' => null,
+        ];
     }
 
     /**

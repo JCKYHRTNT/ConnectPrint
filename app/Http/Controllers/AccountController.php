@@ -26,6 +26,10 @@ class AccountController extends Controller
             return redirect()->route('account');
         }
 
+        if ($request->expectsJson() && $request->input('tab') === 'images') {
+            return response()->json($this->accountImagesCursorPayload($user, $request));
+        }
+
         return view('account', $this->accountViewData($user, false, $request));
     }
 
@@ -43,6 +47,10 @@ class AccountController extends Controller
 
         if ($username !== $expectedSlug) {
             return redirect()->route('account.admin', ['username' => $expectedSlug]);
+        }
+
+        if ($request->expectsJson() && $request->input('tab') === 'images') {
+            return response()->json($this->accountImagesCursorPayload($user, $request));
         }
 
         return view('account', $this->accountViewData($user, true, $request));
@@ -135,10 +143,9 @@ class AccountController extends Controller
             $activeTab = 'account';
         }
 
-        $artworks = Artwork::with(['category', 'tags'])
-            ->where('user_id', $user->id)
-            ->latest()
-            ->get();
+        $artworks = $this->accountImagesQuery($user)
+            ->cursorPaginate(9)
+            ->withQueryString();
 
         $purchases = $user->purchases()
             ->with('items')
@@ -172,6 +179,31 @@ class AccountController extends Controller
                 ->count(),
             'purchaseCount' => $user->purchases()->count(),
             'saleCount' => PurchaseItem::where('creator_id', $user->id)->count(),
+        ];
+    }
+
+    private function accountImagesQuery(User $user)
+    {
+        return Artwork::with(['category', 'tags'])
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+    }
+
+    private function accountImagesCursorPayload(User $user, Request $request): array
+    {
+        $artworks = $this->accountImagesQuery($user)
+            ->cursorPaginate(9)
+            ->withQueryString();
+
+        return [
+            'data' => collect($artworks->items())
+                ->map(fn ($artwork) => view('artworks.partials.profile-image-card', ['artwork' => $artwork])->render())
+                ->values()
+                ->all(),
+            'next_cursor' => $artworks->nextCursor()?->encode(),
+            'has_more' => $artworks->hasMorePages(),
+            'total' => Artwork::where('user_id', $user->id)->count(),
         ];
     }
 }
