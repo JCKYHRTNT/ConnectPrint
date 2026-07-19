@@ -134,6 +134,35 @@
         border-color: var(--tb-blue);
     }
 
+    .cp-history-switcher {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.7rem;
+        background: #ffffff;
+        padding: 0.25rem;
+    }
+
+    .cp-history-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2rem;
+        padding: 0.45rem 0.75rem;
+        border-radius: 0.5rem;
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .cp-history-link.is-active {
+        color: #0f172a;
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.9);
+    }
+
     .tb-btn-account {
         display: inline-flex;
         align-items: center;
@@ -347,75 +376,53 @@
         @endif
     </div>
 @else
-    <div class="row g-3 mb-3">
-        <div class="col-lg-6">
-            <div class="tb-card p-4 h-100">
-                <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;">Images Sold</h2>
-
-                @forelse($sales as $item)
-                    <div class="cp-list-row mb-2">
-                        <span>
-                            <strong>{{ $item->artwork_title_snapshot }}</strong>
-                            <span class="d-block text-muted small">
-                                Buyer: {{ $item->purchase->user->name ?? 'Unknown' }}
-                                @if($item->purchase)
-                                    - {{ $item->purchase->purchase_number }}
-                                @endif
-                            </span>
-                        </span>
-                        <strong>Rp{{ number_format($item->creator_price, 0, ',', '.') }}</strong>
-                    </div>
-                @empty
-                    <p class="text-muted mb-0">No sold images yet.</p>
-                @endforelse
-            </div>
-        </div>
-
-        <div class="col-lg-6">
-            <div class="tb-card p-4 h-100">
-                <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;">
-                    <a href="{{ route('purchases.library') }}" style="color:inherit;text-decoration:none;">Images Bought / Purchases</a>
-                </h2>
-
-                @forelse($purchasedItems as $item)
-                    <div class="cp-list-row mb-2">
-                        <span>
-                            <strong>{{ $item->artwork_title_snapshot }}</strong>
-                            <span class="d-block text-muted small">Creator: {{ $item->creator_name_snapshot }}</span>
-                        </span>
-                        <span class="d-flex gap-2 flex-wrap justify-content-end">
-                            <a class="btn btn-outline-secondary btn-sm" href="{{ route('purchases.show', ['purchase' => $item->purchase_id]) }}">View purchase</a>
-                            @if($item->artwork && $item->artwork->canDownloadFileBy($user))
-                                <a class="btn btn-outline-primary btn-sm" href="{{ route('artworks.print-file', ['artwork' => $item->product_id]) }}">Open file</a>
-                            @endif
-                        </span>
-                    </div>
-                @empty
-                    <p class="text-muted mb-0">No bought images yet.</p>
-                @endforelse
-            </div>
-        </div>
-    </div>
+    @php
+        $historyEndpoint = route('account', ['tab' => 'history', 'history' => $historyType]);
+        $historyTitle = $historyType === 'bought' ? 'Purchases' : 'Images Sold';
+        $historyEmpty = $historyType === 'bought' ? 'No purchases yet.' : 'No sold images yet.';
+        $historyPartial = $historyType === 'bought'
+            ? 'account.partials.history-bought-row'
+            : 'account.partials.history-sold-row';
+    @endphp
 
     <div class="tb-card p-4 mb-3">
-        <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;">Printing Done</h2>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h2 style="font-size:1.25rem;font-weight:700;margin:0;">{{ $historyTitle }}</h2>
+            <nav class="cp-history-switcher" aria-label="Transaction history sections">
+                <a
+                    href="{{ route('account', ['tab' => 'history', 'history' => 'sold']) }}"
+                    class="cp-history-link {{ $historyType === 'sold' ? 'is-active' : '' }}"
+                    @if($historyType === 'sold') aria-current="page" @endif
+                >
+                    Images Sold
+                </a>
+                <a
+                    href="{{ route('account', ['tab' => 'history', 'history' => 'bought']) }}"
+                    class="cp-history-link {{ $historyType === 'bought' ? 'is-active' : '' }}"
+                    @if($historyType === 'bought') aria-current="page" @endif
+                >
+                    Purchases
+                </a>
+            </nav>
+        </div>
 
-        @forelse($purchasedItems as $item)
-            <div class="cp-list-row mb-2">
-                <span>
-                    <strong>{{ $item->artwork_title_snapshot }}</strong>
-                    <span class="d-block text-muted small">
-                        {{ $item->purchase->purchase_number ?? 'Purchase record' }} - ready for Printbox handoff
-                    </span>
-                </span>
-                <span class="d-flex gap-2 flex-wrap align-items-center justify-content-end">
-                    <span class="text-muted small">{{ $item->purchase->created_at?->format('Y-m-d') }}</span>
-                    <a class="btn btn-outline-secondary btn-sm" href="{{ route('purchases.show', ['purchase' => $item->purchase_id]) }}">View purchase</a>
-                </span>
+        @if($historyItems->count() === 0)
+            <p class="text-muted mb-0">{{ $historyEmpty }}</p>
+        @else
+            <div
+                data-cursor-feed
+                data-cursor-endpoint="{{ $historyEndpoint }}"
+                data-next-cursor="{{ $historyItems->nextCursor()?->encode() }}"
+                data-has-more="{{ $historyItems->hasMorePages() ? '1' : '0' }}"
+            >
+                <div data-cursor-list>
+                    @foreach($historyItems as $item)
+                        @include($historyPartial, ['item' => $item, 'user' => $user])
+                    @endforeach
+                </div>
+                @include('partials.cursor-feed-footer')
             </div>
-        @empty
-            <p class="text-muted mb-0">No printing records yet.</p>
-        @endforelse
+        @endif
     </div>
 @endif
 
@@ -474,7 +481,7 @@
     });
 </script>
 
-@if($activeTab === 'images')
+@if(in_array($activeTab, ['images', 'history'], true))
     @include('partials.cursor-feed-script')
 @endif
 

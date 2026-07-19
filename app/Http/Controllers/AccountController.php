@@ -30,6 +30,10 @@ class AccountController extends Controller
             return response()->json($this->accountImagesCursorPayload($user, $request));
         }
 
+        if ($request->expectsJson() && $request->input('tab') === 'history') {
+            return response()->json($this->accountHistoryCursorPayload($user, $request));
+        }
+
         return view('account', $this->accountViewData($user, false, $request));
     }
 
@@ -51,6 +55,10 @@ class AccountController extends Controller
 
         if ($request->expectsJson() && $request->input('tab') === 'images') {
             return response()->json($this->accountImagesCursorPayload($user, $request));
+        }
+
+        if ($request->expectsJson() && $request->input('tab') === 'history') {
+            return response()->json($this->accountHistoryCursorPayload($user, $request));
         }
 
         return view('account', $this->accountViewData($user, true, $request));
@@ -143,35 +151,26 @@ class AccountController extends Controller
             $activeTab = 'account';
         }
 
+        $historyType = $request->input('history', 'sold');
+        if (! in_array($historyType, ['sold', 'bought'], true)) {
+            $historyType = 'sold';
+        }
+
         $artworks = $this->accountImagesQuery($user)
             ->cursorPaginate(9)
             ->withQueryString();
 
-        $purchases = $user->purchases()
-            ->with('items')
-            ->latest()
-            ->get();
-
-        $purchasedItems = PurchaseItem::with(['purchase', 'artwork.user'])
-            ->whereHas('purchase', fn ($query) => $query
-                ->where('user_id', $user->id)
-                ->where('status', 'completed'))
-            ->latest()
-            ->get();
-
-        $sales = PurchaseItem::with(['purchase.user', 'artwork'])
-            ->where('creator_id', $user->id)
-            ->latest()
-            ->get();
+        $historyItems = $activeTab === 'history'
+            ? $this->accountHistoryQuery($user, $historyType)->cursorPaginate(10)->withQueryString()
+            : null;
 
         return [
             'user' => $user,
             'isAdminPage' => $isAdminPage,
             'activeTab' => $activeTab,
+            'historyType' => $historyType,
+            'historyItems' => $historyItems,
             'artworks' => $artworks,
-            'purchases' => $purchases,
-            'purchasedItems' => $purchasedItems,
-            'sales' => $sales,
             'artworkCount' => Artwork::where('user_id', $user->id)->count(),
             'publicArtworkCount' => Artwork::where('user_id', $user->id)
                 ->where('visibility', 'public')
@@ -204,6 +203,49 @@ class AccountController extends Controller
             'next_cursor' => $artworks->nextCursor()?->encode(),
             'has_more' => $artworks->hasMorePages(),
             'total' => Artwork::where('user_id', $user->id)->count(),
+        ];
+    }
+
+    private function accountHistoryQuery(User $user, string $historyType)
+    {
+        if ($historyType === 'bought') {
+            return PurchaseItem::with(['purchase', 'artwork.user'])
+                ->whereHas('purchase', fn ($query) => $query
+                    ->where('user_id', $user->id)
+                    ->where('status', 'completed'))
+                ->orderByDesc('created_at')
+                ->orderByDesc('id');
+        }
+
+        return PurchaseItem::with(['purchase.user', 'artwork'])
+            ->where('creator_id', $user->id)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+    }
+
+    private function accountHistoryCursorPayload(User $user, Request $request): array
+    {
+        $historyType = $request->input('history', 'sold');
+        if (! in_array($historyType, ['sold', 'bought'], true)) {
+            $historyType = 'sold';
+        }
+
+        $items = $this->accountHistoryQuery($user, $historyType)
+            ->cursorPaginate(10)
+            ->withQueryString();
+
+        $partial = $historyType === 'bought'
+            ? 'account.partials.history-bought-row'
+            : 'account.partials.history-sold-row';
+
+        return [
+            'data' => collect($items->items())
+                ->map(fn ($item) => view($partial, ['item' => $item, 'user' => $user])->render())
+                ->values()
+                ->all(),
+            'next_cursor' => $items->nextCursor()?->encode(),
+            'has_more' => $items->hasMorePages(),
+            'total' => null,
         ];
     }
 }

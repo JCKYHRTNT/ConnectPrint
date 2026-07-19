@@ -8,17 +8,24 @@
         <h1 style="font-size:1.4rem;font-weight:700;">Notifications</h1>
         <form method="POST" action="{{ route('notifications.read-all') }}">@csrf <button class="btn btn-outline-secondary btn-sm">Mark all read</button></form>
     </div>
-    @forelse($notifications as $notification)
-        <div class="border rounded p-3 mb-2 {{ $notification->read_at ? '' : 'bg-light' }}">
-            <div>{{ $notification->message }}</div>
-            <small class="text-muted">{{ $notification->created_at->diffForHumans() }}</small>
-            @if(! $notification->read_at)
-                <form method="POST" action="{{ route('notifications.read', ['notification' => $notification->id]) }}" class="mt-1">@csrf @method('PATCH')<button class="btn btn-outline-primary btn-sm">Mark read</button></form>
-            @endif
-        </div>
-    @empty
+    @if($notifications->count() === 0)
         <p class="text-muted">No notifications.</p>
-    @endforelse
-    {{ $notifications->links() }}
+    @else
+        <div
+            data-cursor-feed
+            data-cursor-endpoint="{{ route('notifications.index') }}"
+            data-next-cursor="{{ $notifications->nextCursor()?->encode() }}"
+            data-has-more="{{ $notifications->hasMorePages() ? '1' : '0' }}"
+        >
+            <div data-cursor-list>
+                @foreach($notifications as $notification)
+                    @include('notifications.partials.notification-row', ['notification' => $notification])
+                @endforeach
+            </div>
+            @include('partials.cursor-feed-footer')
+        </div>
+    @endif
 </div>
+
+@include('partials.cursor-feed-script')
 @endsection

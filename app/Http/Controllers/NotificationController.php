@@ -4,14 +4,33 @@ namespace App\Http\Controllers;
 
 use App\Models\AppNotification;
 use App\Models\User;
+use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = User::findOrFail(session('user_id'));
+        $notifications = $user->notifications()
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->cursorPaginate(20)
+            ->withQueryString();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => collect($notifications->items())
+                    ->map(fn ($notification) => view('notifications.partials.notification-row', ['notification' => $notification])->render())
+                    ->values()
+                    ->all(),
+                'next_cursor' => $notifications->nextCursor()?->encode(),
+                'has_more' => $notifications->hasMorePages(),
+                'total' => null,
+            ]);
+        }
+
         return view('notifications.index', [
-            'notifications' => $user->notifications()->latest()->paginate(20),
+            'notifications' => $notifications,
         ]);
     }
 

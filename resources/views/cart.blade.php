@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="tb-card p-4">
-    <h1 style="font-size:1.4rem;font-weight:700;">Printable access cart</h1>
+    <h1 style="font-size:1.4rem;font-weight:700;">Cart</h1>
     @if(session('success')) <div class="alert alert-success">{{ session('success') }}</div> @endif
     @if(session('error')) <div class="alert alert-danger">{{ session('error') }}</div> @endif
     @error('cart') <div class="alert alert-danger">{{ $message }}</div> @enderror
