@@ -140,18 +140,6 @@ class Product extends Model
             return true;
         }
 
-        if (! $this->is_printable || (int) $this->price <= 0 || $this->isArchived()) {
-            return false;
-        }
-
-        if (! in_array($this->visibility, ['public', 'unlisted'], true)) {
-            return false;
-        }
-
-        if (in_array($this->moderation_status, ['draft', 'rejected'], true)) {
-            return false;
-        }
-
         return $user->hasPurchased($this);
     }
 }

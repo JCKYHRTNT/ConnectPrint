@@ -15,7 +15,7 @@ class NotificationController extends Controller
         ]);
     }
 
-    public function read(string $username, AppNotification $notification)
+    public function read(AppNotification $notification)
     {
         abort_unless((int) $notification->user_id === (int) session('user_id'), 403);
         $notification->update(['read_at' => now()]);

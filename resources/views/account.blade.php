@@ -374,7 +374,7 @@
         <div class="col-lg-6">
             <div class="tb-card p-4 h-100">
                 <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;">
-                    <a href="{{ route('purchases.library') }}" style="color:inherit;text-decoration:none;">Images Bought</a>
+                    <a href="{{ route('purchases.library') }}" style="color:inherit;text-decoration:none;">Images Bought / Purchases</a>
                 </h2>
 
                 @forelse($purchasedItems as $item)
@@ -383,9 +383,12 @@
                             <strong>{{ $item->artwork_title_snapshot }}</strong>
                             <span class="d-block text-muted small">Creator: {{ $item->creator_name_snapshot }}</span>
                         </span>
-                        @if($item->artwork && $item->artwork->canDownloadFileBy($user))
-                            <a class="btn btn-outline-primary btn-sm" href="{{ route('artworks.print-file', ['artwork' => $item->product_id]) }}">Open file</a>
-                        @endif
+                        <span class="d-flex gap-2 flex-wrap justify-content-end">
+                            <a class="btn btn-outline-secondary btn-sm" href="{{ route('purchases.show', ['purchase' => $item->purchase_id]) }}">View purchase</a>
+                            @if($item->artwork && $item->artwork->canDownloadFileBy($user))
+                                <a class="btn btn-outline-primary btn-sm" href="{{ route('artworks.print-file', ['artwork' => $item->product_id]) }}">Open file</a>
+                            @endif
+                        </span>
                     </div>
                 @empty
                     <p class="text-muted mb-0">No bought images yet.</p>
@@ -405,7 +408,10 @@
                         {{ $item->purchase->purchase_number ?? 'Purchase record' }} - ready for Printbox handoff
                     </span>
                 </span>
-                <span class="text-muted small">{{ $item->purchase->created_at?->format('Y-m-d') }}</span>
+                <span class="d-flex gap-2 flex-wrap align-items-center justify-content-end">
+                    <span class="text-muted small">{{ $item->purchase->created_at?->format('Y-m-d') }}</span>
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ route('purchases.show', ['purchase' => $item->purchase_id]) }}">View purchase</a>
+                </span>
             </div>
         @empty
             <p class="text-muted mb-0">No printing records yet.</p>

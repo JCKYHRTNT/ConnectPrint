@@ -20,10 +20,6 @@ Route::get('/home', [HomeController::class, 'homeForUser'])
     ->middleware('auth.user')
     ->name('home.user');
 
-Route::get('/u/{username}', function () {
-    return redirect()->route('home.user', request()->query());
-})->middleware('auth.user')->name('home.user.legacy');
-
 // Guest artwork detail
 Route::get('/artworks/{id}', [HomeController::class, 'artworkDetail'])
     ->whereNumber('id')
@@ -43,7 +39,6 @@ Route::view('/print-with-printbox', 'printbox')
     ->name('printbox');
 
 Route::middleware('auth.user')->group(function () {
-    Route::get('/artworks', fn () => redirect()->route('account', ['tab' => 'images']))->name('artworks.index');
     Route::get('/artworks/create', [ArtworkController::class, 'create'])->name('artworks.create');
     Route::post('/artworks', [ArtworkController::class, 'store'])->name('artworks.store');
     Route::post('/artworks/draft', [ArtworkController::class, 'saveDraft'])->name('artworks.draft.store');
@@ -54,24 +49,16 @@ Route::middleware('auth.user')->group(function () {
     Route::patch('/artworks/{artwork}/restore', [ArtworkController::class, 'restore'])->whereNumber('artwork')->name('artworks.restore');
     Route::delete('/artworks/{artwork}', [ArtworkController::class, 'destroy'])->whereNumber('artwork')->name('artworks.destroy');
     Route::get('/artworks/{artwork}/print-file', [ArtworkController::class, 'printFile'])->whereNumber('artwork')->name('artworks.print-file');
-    Route::get('/purchased-artworks', fn () => redirect()->route('purchases.library'))->name('purchases.library.short-legacy');
+    Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->whereNumber('purchase')->name('purchases.show');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereNumber('notification')->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
 });
-
-// User artwork detail
-Route::get('/u/{username}/artworks/{id}', function (string $username, int $id) {
-    return redirect()->route('artworks.show', ['id' => $id]);
-})
-    ->whereNumber('id')
-    ->name('artworks.show.user.legacy');
 
 // User cart
 Route::get('/cart', [CartController::class, 'index'])
     ->middleware('auth.user')
     ->name('cart');
-
-Route::get('/u/{username}/cart', function () {
-    return redirect()->route('cart');
-})->middleware('auth.user')->name('cart.legacy');
 
 // User Cart Add Update
 Route::post('/cart/artworks/{artwork}', [CartController::class, 'add'])
@@ -87,22 +74,6 @@ Route::post('/cart/checkout', [CartController::class, 'checkout'])
     ->middleware('auth.user')
     ->name('cart.checkout');
 
-Route::middleware('auth.user')->group(function () {
-    Route::get('/u/{username}/artworks', fn (string $username) => redirect()->route('artworks.index', request()->query()))->name('artworks.index.legacy');
-    Route::get('/u/{username}/artworks/create', fn (string $username) => redirect()->route('artworks.create'))->name('artworks.create.legacy');
-    Route::get('/u/{username}/artworks/{artwork}/edit', fn (string $username, int $artwork) => redirect()->route('artworks.edit', ['artwork' => $artwork]))->whereNumber('artwork')->name('artworks.edit.legacy');
-    Route::get('/u/{username}/artworks/{artwork}/print-file', fn (string $username, int $artwork) => redirect()->route('artworks.print-file', ['artwork' => $artwork]))->whereNumber('artwork')->name('artworks.print-file.legacy');
-
-    Route::get('/u/{username}/purchases', [PurchaseController::class, 'index'])->name('purchases.index');
-    Route::get('/u/{username}/purchases/{purchase}', [PurchaseController::class, 'show'])->name('purchases.show');
-    Route::get('/u/{username}/purchased-artworks', fn () => redirect()->route('purchases.library'))->name('purchases.library.legacy');
-    Route::get('/u/{username}/sales', [PurchaseController::class, 'sales'])->name('sales');
-
-    Route::get('/u/{username}/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::patch('/u/{username}/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
-    Route::post('/u/{username}/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
-});
-
 Route::post('/artworks/{artwork}/reports', [ArtworkReportController::class, 'store'])
     ->name('artworks.reports.store');
 
@@ -115,15 +86,6 @@ Route::get('/account', [AccountController::class, 'userAccount'])
 Route::get('/account/images-bought', [PurchaseController::class, 'purchasedArtworks'])
     ->middleware('auth.user')
     ->name('purchases.library');
-
-Route::get('/u/{username}/account', function () {
-    return redirect()->route('account', request()->query());
-})->middleware('auth.user')->name('account.legacy');
-
-// User redirect from admin/crud
-Route::get('/u/{username}/admin', function ($username) {
-    return redirect()->route('home.user');
-});
 
 // Admin account (view)
 Route::get('/a/{username}/account', [AccountController::class, 'adminAccount'])
@@ -147,11 +109,6 @@ Route::post('/a/{username}/account/update', [AccountController::class, 'update']
 Route::post('/a/{username}/account/delete', [AccountController::class, 'destroy'])
     ->middleware('admin')
     ->name('account.admin.delete');
-
-// Admin redirect from cart
-Route::get('/a/{username}/cart', function ($username) {
-    return redirect()->route('admin.user', ['username' => $username]);
-});
 
 // Admin
 Route::middleware('admin')->group(function () {

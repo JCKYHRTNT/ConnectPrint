@@ -18,6 +18,43 @@
         gap: 0.4rem;
         min-width: 260px;
     }
+
+    .tb-bell-icon {
+        width: 16px;
+        height: 16px;
+        display: inline-block;
+        position: relative;
+        border: 1.8px solid currentColor;
+        border-top-left-radius: 999px;
+        border-top-right-radius: 999px;
+        border-bottom: none;
+        opacity: 0.85;
+    }
+
+    .tb-bell-icon::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: -3px;
+        width: 4px;
+        height: 4px;
+        border-radius: 999px;
+        background: currentColor;
+        transform: translateX(-50%);
+    }
+
+    .tb-bell-icon::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: -5px;
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        border: 1.8px solid currentColor;
+        border-top: none;
+        transform: translateX(-50%);
+    }
 </style>
 
 <header class="tb-header-fixed">
@@ -258,6 +295,14 @@
                     style="gap:0.35rem;">
                         <img src="{{ asset('images/account_icon.png') }}" alt="Login" style="height:16px;width:16px;opacity:0.85;">
                         Login
+                    </a>
+                @endif
+
+                @if($loggedIn)
+                    <a href="{{ route('notifications.index') }}"
+                    class="tb-pill-link d-inline-flex align-items-center"
+                    style="gap:0.35rem;">
+                        <span class="tb-bell-icon" aria-hidden="true"></span>
                     </a>
                 @endif
             </nav>

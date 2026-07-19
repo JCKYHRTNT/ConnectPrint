@@ -161,7 +161,7 @@ class CartController extends Controller
                     AppNotification::create([
                         'user_id' => $artwork->user_id,
                         'message' => $user->name . ' purchased printable access to "' . $artwork->name . '".',
-                        'url' => route('sales', ['username' => $artwork->user->slug ?? \Illuminate\Support\Str::slug($artwork->creatorName())]),
+                        'url' => route('account', ['tab' => 'history']),
                     ]);
                 }
             }
@@ -169,7 +169,7 @@ class CartController extends Controller
             AppNotification::create([
                 'user_id' => $user->id,
                 'message' => 'Your purchase ' . $purchase->purchase_number . ' is complete.',
-                'url' => route('purchases.show', ['username' => $user->slug, 'purchase' => $purchase->id]),
+                'url' => route('purchases.show', ['purchase' => $purchase->id]),
             ]);
 
             $cart->items()->delete();
@@ -178,7 +178,7 @@ class CartController extends Controller
         });
 
         return redirect()
-            ->route('purchases.show', ['username' => $user->slug, 'purchase' => $purchase->id])
+            ->route('purchases.show', ['purchase' => $purchase->id])
             ->with('success', 'Simulation only - no real payment was processed.');
     }
 }
