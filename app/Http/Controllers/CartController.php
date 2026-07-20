@@ -17,7 +17,7 @@ class CartController extends Controller
     /**
      * Show cart for logged-in user.
      */
-    public function index()
+    public function index(Request $request)
     {
         if (!session('user_id')) {
             return redirect()->route('login')->with('error', 'Please login to view your cart.');
@@ -30,14 +30,13 @@ class CartController extends Controller
             ['user_id' => $userId]
         );
 
-        $cart->load(['items.artwork.category']);
+        $allItems = $cart->items()->with(['artwork.user', 'artwork.category'])->get();
 
-        $items = $cart->items;
-
-        $total = $items->reduce(function ($carry, CartItem $item) {
+        $total = $allItems->reduce(function ($carry, CartItem $item) {
             return $carry + ($item->artwork->price ?? 0);
         }, 0);
 
+        $items = $this->cartItemsQuery($cart, $request)->get();
         $categories = Category::orderBy('name')->get();
 
         return view('cart', [
@@ -45,6 +44,39 @@ class CartController extends Controller
             'total'      => $total,
             'categories' => $categories,
         ]);
+    }
+
+    private function cartItemsQuery(Cart $cart, Request $request)
+    {
+        $query = $cart->items()->with(['artwork.user', 'artwork.category']);
+        $search = trim((string) $request->input('q', ''));
+
+        if ($search !== '') {
+            $query->whereHas('artwork', function ($artworkQuery) use ($search) {
+                $artworkQuery
+                    ->where('name', 'like', '%' . $search . '%')
+                    ->orWhereHas('user', fn ($userQuery) => $userQuery->where('name', 'like', '%' . $search . '%'));
+            });
+        }
+
+        if ($request->filled('category')) {
+            $query->whereHas('artwork', fn ($artworkQuery) => $artworkQuery->where('category_id', $request->integer('category')));
+        }
+
+        if (in_array($request->input('sort'), ['price_asc', 'price_desc'], true)) {
+            $query->join('products', 'cart_items.product_id', '=', 'products.id')
+                ->select('cart_items.*')
+                ->orderBy('products.price', $request->input('sort') === 'price_asc' ? 'asc' : 'desc')
+                ->orderByDesc('cart_items.created_at')
+                ->orderByDesc('cart_items.id');
+
+            return $query;
+        }
+
+        return match ($request->input('sort')) {
+            'oldest' => $query->orderBy('created_at')->orderBy('id'),
+            default => $query->orderByDesc('created_at')->orderByDesc('id'),
+        };
     }
 
     /**

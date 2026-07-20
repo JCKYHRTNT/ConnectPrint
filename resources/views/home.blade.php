@@ -59,10 +59,11 @@
     .cp-search-tag-box {
         border: 1px solid #d1d5db;
         border-radius: 8px;
-        max-height: 4.8rem;
+        height: 2.5rem;
+        max-height: 2.5rem;
         overflow-x: auto;
         overflow-y: hidden;
-        padding: 0.55rem;
+        padding: 0.3rem 0.45rem;
         background: #ffffff;
     }
 
@@ -94,7 +95,7 @@
         outline: none;
         min-width: 18rem;
         flex: 0 0 18rem;
-        padding: 0.25rem 0.15rem;
+        padding: 0.15rem;
     }
 
     .cp-search-tag-input.has-tags::placeholder {
@@ -107,8 +108,8 @@
         border-radius: 8px;
         background: #f8fafc;
         color: #64748b;
-        padding: 0.25rem 0.6rem;
-        font-size: 0.8rem;
+        padding: 0.15rem 0.45rem;
+        font-size: 0.72rem;
         font-weight: 600;
     }
 

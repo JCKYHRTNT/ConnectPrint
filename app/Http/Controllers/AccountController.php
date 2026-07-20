@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Category;
 use App\Models\Product as Artwork;
 use App\Models\PurchaseItem;
+use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AccountController extends Controller
 {
@@ -156,12 +159,14 @@ class AccountController extends Controller
             $historyType = 'sold';
         }
 
-        $artworks = $this->accountImagesQuery($user)
+        $selectedTags = $this->selectedTagNames($request);
+
+        $artworks = $this->accountImagesQuery($user, $request)
             ->cursorPaginate(9)
             ->withQueryString();
 
         $historyItems = $activeTab === 'history'
-            ? $this->accountHistoryQuery($user, $historyType)->cursorPaginate(10)->withQueryString()
+            ? $this->accountHistoryQuery($user, $historyType, $request)->cursorPaginate(10)->withQueryString()
             : null;
 
         return [
@@ -171,6 +176,9 @@ class AccountController extends Controller
             'historyType' => $historyType,
             'historyItems' => $historyItems,
             'artworks' => $artworks,
+            'categories' => Category::orderBy('name')->get(),
+            'suggestedTags' => $this->suggestedTagNames($user),
+            'selectedTags' => $selectedTags->all(),
             'artworkCount' => Artwork::where('user_id', $user->id)->count(),
             'publicArtworkCount' => Artwork::where('user_id', $user->id)
                 ->where('visibility', 'public')
@@ -181,17 +189,46 @@ class AccountController extends Controller
         ];
     }
 
-    private function accountImagesQuery(User $user)
+    private function accountImagesQuery(User $user, Request $request)
     {
-        return Artwork::with(['category', 'tags', 'user'])
-            ->where('user_id', $user->id)
-            ->orderByDesc('created_at')
-            ->orderByDesc('id');
+        $query = Artwork::with(['category', 'tags', 'user'])
+            ->where('user_id', $user->id);
+
+        $search = trim((string) $request->input('q', ''));
+        $selectedTags = $this->selectedTagNames($request);
+
+        if ($search !== '') {
+            $query->where(function ($subQuery) use ($search) {
+                $subQuery
+                    ->where('name', 'like', '%' . $search . '%')
+                    ->orWhereHas('tags', fn ($tagQuery) => $tagQuery->where('name', 'like', '%' . ltrim($search, '#') . '%'));
+            });
+        }
+
+        if ($selectedTags->isNotEmpty()) {
+            $query->whereHas('tags', fn ($tagQuery) => $tagQuery->whereIn('name', $selectedTags->all()));
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category_id', $request->integer('category'));
+        }
+
+        if (in_array($request->input('visibility'), ['public', 'unlisted', 'private', 'archived'], true)) {
+            $query->where('visibility', $request->input('visibility'));
+        }
+
+        if ($request->input('printable') === 'printable') {
+            $query->where('is_printable', true);
+        } elseif ($request->input('printable') === 'display') {
+            $query->where('is_printable', false);
+        }
+
+        return $this->applyArtworkSort($query, $request->input('sort'));
     }
 
     private function accountImagesCursorPayload(User $user, Request $request): array
     {
-        $artworks = $this->accountImagesQuery($user)
+        $artworks = $this->accountImagesQuery($user, $request)
             ->cursorPaginate(9)
             ->withQueryString();
 
@@ -206,21 +243,42 @@ class AccountController extends Controller
         ];
     }
 
-    private function accountHistoryQuery(User $user, string $historyType)
+    private function accountHistoryQuery(User $user, string $historyType, Request $request)
     {
+        $search = trim((string) $request->input('q', ''));
+
         if ($historyType === 'bought') {
-            return PurchaseItem::with(['purchase', 'artwork.user'])
+            $query = PurchaseItem::with(['purchase', 'artwork.user'])
                 ->whereHas('purchase', fn ($query) => $query
                     ->where('user_id', $user->id)
-                    ->where('status', 'completed'))
-                ->orderByDesc('created_at')
-                ->orderByDesc('id');
+                    ->where('status', 'completed'));
+
+            if ($search !== '') {
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery
+                        ->where('artwork_title_snapshot', 'like', '%' . $search . '%')
+                        ->orWhere('creator_name_snapshot', 'like', '%' . $search . '%')
+                        ->orWhereHas('purchase', fn ($purchaseQuery) => $purchaseQuery->where('purchase_number', 'like', '%' . $search . '%'));
+                });
+            }
+
+            return $this->applyHistorySort($query, $request->input('sort'));
         }
 
-        return PurchaseItem::with(['purchase.user', 'artwork'])
-            ->where('creator_id', $user->id)
-            ->orderByDesc('created_at')
-            ->orderByDesc('id');
+        $query = PurchaseItem::with(['purchase.user', 'artwork'])
+            ->where('creator_id', $user->id);
+
+        if ($search !== '') {
+            $query->where(function ($subQuery) use ($search) {
+                $subQuery
+                    ->where('artwork_title_snapshot', 'like', '%' . $search . '%')
+                    ->orWhereHas('purchase', fn ($purchaseQuery) => $purchaseQuery
+                        ->where('purchase_number', 'like', '%' . $search . '%')
+                        ->orWhereHas('user', fn ($buyerQuery) => $buyerQuery->where('name', 'like', '%' . $search . '%')));
+            });
+        }
+
+        return $this->applyHistorySort($query, $request->input('sort'));
     }
 
     private function accountHistoryCursorPayload(User $user, Request $request): array
@@ -230,7 +288,7 @@ class AccountController extends Controller
             $historyType = 'sold';
         }
 
-        $items = $this->accountHistoryQuery($user, $historyType)
+        $items = $this->accountHistoryQuery($user, $historyType, $request)
             ->cursorPaginate(10)
             ->withQueryString();
 
@@ -247,5 +305,51 @@ class AccountController extends Controller
             'has_more' => $items->hasMorePages(),
             'total' => null,
         ];
+    }
+
+    private function applyArtworkSort($query, ?string $sort)
+    {
+        return match ($sort) {
+            'oldest' => $query->orderBy('created_at')->orderBy('id'),
+            'price_asc' => $query->orderBy('price')->orderByDesc('created_at')->orderByDesc('id'),
+            'price_desc' => $query->orderByDesc('price')->orderByDesc('created_at')->orderByDesc('id'),
+            default => $query->orderByDesc('created_at')->orderByDesc('id'),
+        };
+    }
+
+    private function applyHistorySort($query, ?string $sort)
+    {
+        return match ($sort) {
+            'oldest' => $query->orderBy('created_at')->orderBy('id'),
+            'price_asc' => $query->orderBy('creator_price')->orderByDesc('created_at')->orderByDesc('id'),
+            'price_desc' => $query->orderByDesc('creator_price')->orderByDesc('created_at')->orderByDesc('id'),
+            default => $query->orderByDesc('created_at')->orderByDesc('id'),
+        };
+    }
+
+    private function selectedTagNames(Request $request)
+    {
+        return collect((array) $request->input('tags', []))
+            ->map(fn ($tag) => Str::of($tag)->ltrim('#')->replaceMatches('/\s+/', '')->lower()->toString())
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    private function suggestedTagNames(User $user): array
+    {
+        $fallback = collect(['digitalart', 'fanart', 'magic', 'digitalpainting', 'wallpaper', 'animedrawing', 'adoptable']);
+
+        return Tag::whereHas('artworks', fn ($query) => $query
+                ->where('user_id', $user->id)
+                ->orWhereIn('visibility', ['public', 'unlisted']))
+            ->orderBy('name')
+            ->pluck('name')
+            ->merge($fallback)
+            ->map(fn ($tag) => Str::of($tag)->replace(' ', '')->lower()->toString())
+            ->unique()
+            ->take(12)
+            ->values()
+            ->all();
     }
 }

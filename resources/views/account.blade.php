@@ -12,9 +12,18 @@
         'images' => 'Your Images',
         'history' => 'Transaction History',
     ];
-    $imagesCursorEndpoint = ($isAdminPage
+    $accountBaseRoute = $isAdminPage
         ? route('account.admin', ['username' => $userSlug])
-        : route('account')) . '?tab=images';
+        : route('account');
+    $imagesFilterQuery = collect(request()->except('cursor', 'history'))
+        ->merge(['tab' => 'images'])
+        ->filter(fn ($value) => $value !== null && $value !== '')
+        ->all();
+    $historyFilterQuery = collect(request()->except('cursor'))
+        ->merge(['tab' => 'history', 'history' => $historyType ?? 'sold'])
+        ->filter(fn ($value) => $value !== null && $value !== '')
+        ->all();
+    $imagesCursorEndpoint = $accountBaseRoute . '?' . http_build_query($imagesFilterQuery);
 @endphp
 
 @section('content')
@@ -163,6 +172,126 @@
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.9);
     }
 
+    .cp-filter-panel {
+        display: grid;
+        grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(130px, 0.55fr);
+        gap: 0.75rem;
+        align-items: end;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 0.85rem;
+        background: #ffffff;
+    }
+
+    .cp-history-filter-panel {
+        grid-template-columns: minmax(260px, 1fr) minmax(150px, 0.45fr) auto;
+    }
+
+    .cp-filter-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+
+    .cp-filter-label {
+        margin-bottom: 0;
+    }
+
+    [data-cp-tag-inputs] {
+        display: none;
+    }
+
+    .cp-filter-tags-row {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(130px, 0.55fr);
+        gap: 0.75rem;
+        align-items: start;
+    }
+
+    .cp-search-tag-box {
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        height: 2.5rem;
+        max-height: 2.5rem;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 0.3rem 0.45rem;
+        background: #ffffff;
+    }
+
+    .cp-search-tag-list {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 0.45rem;
+        width: max-content;
+        max-width: none;
+    }
+
+    .cp-search-tag-input {
+        border: none;
+        outline: none;
+        min-width: 12rem;
+        flex: 0 0 12rem;
+        padding: 0.15rem;
+    }
+
+    .cp-search-tag-input.has-tags::placeholder {
+        color: transparent;
+    }
+
+    .cp-tag-chip,
+    .cp-suggested-tag {
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: #f8fafc;
+        color: #64748b;
+        padding: 0.15rem 0.45rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+    }
+
+    .cp-tag-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .cp-tag-chip button {
+        border: none;
+        background: transparent;
+        color: #64748b;
+        font-weight: 700;
+        line-height: 1;
+        padding: 0;
+    }
+
+    .cp-suggested-tag-menu {
+        max-height: 6.25rem;
+        overflow-y: auto;
+        width: min(32rem, 85vw);
+    }
+
+    .cp-suggested-tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+
+    .cp-suggested-tag {
+        display: inline-flex;
+        width: auto;
+        background: #ffffff;
+    }
+
+    .cp-suggested-tag.is-selected {
+        border-color: var(--tb-blue);
+        color: var(--tb-blue);
+        background: #ecfdf5;
+    }
+
     .tb-btn-account {
         display: inline-flex;
         align-items: center;
@@ -218,6 +347,19 @@
 
         .cp-profile-nav {
             width: 100%;
+        }
+
+        .cp-filter-panel,
+        .cp-history-filter-panel {
+            grid-template-columns: 1fr;
+        }
+
+        .cp-filter-actions {
+            justify-content: flex-start;
+        }
+
+        .cp-filter-tags-row {
+            grid-template-columns: 1fr;
         }
     }
 </style>
@@ -354,9 +496,95 @@
             <a class="tb-btn-primary" href="{{ route('artworks.create') }}">Upload Image</a>
         </div>
 
+        <form method="GET" action="{{ $accountBaseRoute }}" class="cp-filter-panel mb-3" data-autofilter-form>
+            <input type="hidden" name="tab" value="images">
+            <div data-cp-tag-inputs>
+                @foreach(($selectedTags ?? []) as $tag)
+                    <input type="hidden" name="tags[]" value="{{ $tag }}">
+                @endforeach
+            </div>
+            <div>
+                <label class="form-label cp-filter-label" for="imageSearch">Search</label>
+            </div>
+            <div>
+                <label class="form-label cp-filter-label" for="imageCategory">Category</label>
+            </div>
+            <div>
+                <label class="form-label cp-filter-label" for="imageVisibility">Visibility</label>
+            </div>
+            <div>
+                <label class="form-label cp-filter-label" for="imagePrintable">Type</label>
+            </div>
+            <div>
+                <label class="form-label cp-filter-label" for="imageSort">Sort</label>
+            </div>
+            <div>
+                <div class="cp-search-tag-box">
+                    <div class="cp-search-tag-list" data-cp-selected-tags aria-label="Search tags">
+                        @foreach(($selectedTags ?? []) as $tag)
+                            <span class="cp-tag-chip" data-cp-tag-chip="{{ $tag }}">#{{ $tag }} <button type="button" data-cp-remove-tag="{{ $tag }}">x</button></span>
+                        @endforeach
+                        <input class="cp-search-tag-input" id="imageSearch" name="q" value="{{ request('q') }}" placeholder="Search or type #tag and press Enter" data-autofilter-debounce data-cp-tag-text-input>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <select class="form-select" id="imageCategory" name="category" data-autofilter-instant>
+                    <option value="">All categories</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->id }}" @selected((string) request('category') === (string) $category->id)>{{ $category->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <select class="form-select" id="imageVisibility" name="visibility" data-autofilter-instant>
+                    <option value="">All</option>
+                    <option value="public" @selected(request('visibility') === 'public')>Public</option>
+                    <option value="unlisted" @selected(request('visibility') === 'unlisted')>Unlisted</option>
+                    <option value="private" @selected(request('visibility') === 'private')>Private</option>
+                    <option value="archived" @selected(request('visibility') === 'archived')>Archived</option>
+                </select>
+            </div>
+            <div>
+                <select class="form-select" id="imagePrintable" name="printable" data-autofilter-instant>
+                    <option value="">All</option>
+                    <option value="printable" @selected(request('printable') === 'printable')>Printable</option>
+                    <option value="display" @selected(request('printable') === 'display')>Display only</option>
+                </select>
+            </div>
+            <div>
+                <select class="form-select" id="imageSort" name="sort" data-autofilter-instant>
+                    <option value="">Newest</option>
+                    <option value="oldest" @selected(request('sort') === 'oldest')>Oldest</option>
+                    <option value="price_asc" @selected(request('sort') === 'price_asc')>Price low</option>
+                    <option value="price_desc" @selected(request('sort') === 'price_desc')>Price high</option>
+                </select>
+            </div>
+            <div class="cp-filter-tags-row">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                        Suggested tags
+                    </button>
+                    <div class="dropdown-menu p-2 cp-suggested-tag-menu" aria-label="Suggested tags">
+                        <div class="cp-suggested-tag-list">
+                            @foreach($suggestedTags as $tag)
+                                <button class="cp-suggested-tag @if(in_array($tag, $selectedTags ?? [], true)) is-selected @endif" type="button" data-cp-tag-button data-tag="{{ $tag }}">#{{ $tag }} +</button>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div class="cp-filter-actions">
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ $accountBaseRoute }}?tab=images">Clear</a>
+                </div>
+            </div>
+        </form>
+
         @if($artworks->count() === 0)
             <div class="border rounded p-4 text-center">
-                <p class="text-muted mb-3">No images uploaded yet.</p>
+                <p class="text-muted mb-3">{{ count(request()->except('tab', 'cursor')) > 0 ? 'No matching images found.' : 'No images uploaded yet.' }}</p>
                 <a class="tb-btn-primary" href="{{ route('artworks.create') }}">Upload Image</a>
             </div>
         @else
@@ -377,12 +605,13 @@
     </div>
 @else
     @php
-        $historyEndpoint = route('account', ['tab' => 'history', 'history' => $historyType]);
+        $historyEndpoint = $accountBaseRoute . '?' . http_build_query($historyFilterQuery);
         $historyTitle = $historyType === 'bought' ? 'Purchases' : 'Images Sold';
         $historyEmpty = $historyType === 'bought' ? 'No purchases yet.' : 'No sold images yet.';
         $historyPartial = $historyType === 'bought'
             ? 'account.partials.history-bought-row'
             : 'account.partials.history-sold-row';
+        $historySectionQuery = request()->only('q', 'sort');
     @endphp
 
     <div class="tb-card p-4 mb-3">
@@ -390,14 +619,14 @@
             <h2 style="font-size:1.25rem;font-weight:700;margin:0;">{{ $historyTitle }}</h2>
             <nav class="cp-history-switcher" aria-label="Transaction history sections">
                 <a
-                    href="{{ route('account', ['tab' => 'history', 'history' => 'sold']) }}"
+                    href="{{ route('account', array_merge(['tab' => 'history', 'history' => 'sold'], $historySectionQuery)) }}"
                     class="cp-history-link {{ $historyType === 'sold' ? 'is-active' : '' }}"
                     @if($historyType === 'sold') aria-current="page" @endif
                 >
                     Images Sold
                 </a>
                 <a
-                    href="{{ route('account', ['tab' => 'history', 'history' => 'bought']) }}"
+                    href="{{ route('account', array_merge(['tab' => 'history', 'history' => 'bought'], $historySectionQuery)) }}"
                     class="cp-history-link {{ $historyType === 'bought' ? 'is-active' : '' }}"
                     @if($historyType === 'bought') aria-current="page" @endif
                 >
@@ -405,6 +634,27 @@
                 </a>
             </nav>
         </div>
+
+        <form method="GET" action="{{ $accountBaseRoute }}" class="cp-filter-panel cp-history-filter-panel mb-3" data-autofilter-form>
+            <input type="hidden" name="tab" value="history">
+            <input type="hidden" name="history" value="{{ $historyType }}">
+            <div>
+                <label class="form-label" for="historySearch">Search</label>
+                <input class="form-control" id="historySearch" name="q" value="{{ request('q') }}" placeholder="{{ $historyType === 'bought' ? 'Artwork, creator, or purchase number' : 'Artwork, buyer, or purchase number' }}" data-autofilter-debounce>
+            </div>
+            <div>
+                <label class="form-label" for="historySort">Sort</label>
+                <select class="form-select" id="historySort" name="sort" data-autofilter-instant>
+                    <option value="">Newest</option>
+                    <option value="oldest" @selected(request('sort') === 'oldest')>Oldest</option>
+                    <option value="price_asc" @selected(request('sort') === 'price_asc')>Price low</option>
+                    <option value="price_desc" @selected(request('sort') === 'price_desc')>Price high</option>
+                </select>
+            </div>
+            <div class="cp-filter-actions">
+                <a class="btn btn-outline-secondary btn-sm" href="{{ $accountBaseRoute }}?tab=history&history={{ $historyType }}">Clear</a>
+            </div>
+        </form>
 
         @if($historyItems->count() === 0)
             <p class="text-muted mb-0">{{ $historyEmpty }}</p>
@@ -477,6 +727,136 @@
             document.execCommand('copy');
             input.remove();
             markCopied();
+        });
+
+        document.querySelectorAll('[data-autofilter-form]').forEach(function (form) {
+            let timer = null;
+
+            function submitForm() {
+                form.requestSubmit();
+            }
+
+            form.querySelectorAll('[data-autofilter-debounce]').forEach(function (input) {
+                input.addEventListener('input', function () {
+                    if (input.matches('[data-cp-tag-text-input]') && input.value.trim().startsWith('#')) {
+                        window.clearTimeout(timer);
+                        return;
+                    }
+
+                    window.clearTimeout(timer);
+                    timer = window.setTimeout(submitForm, 450);
+                });
+            });
+
+            form.querySelectorAll('[data-autofilter-instant]').forEach(function (input) {
+                input.addEventListener('change', function () {
+                    submitForm();
+                });
+            });
+
+            function selectedTagValues() {
+                return Array.from(form.querySelectorAll('input[name="tags[]"]')).map(function (input) {
+                    return input.value;
+                });
+            }
+
+            function syncTagButtons() {
+                const selected = selectedTagValues();
+
+                form.querySelectorAll('[data-cp-tag-button]').forEach(function (button) {
+                    button.classList.toggle('is-selected', selected.includes(button.dataset.tag));
+                });
+
+                form.querySelectorAll('[data-cp-tag-text-input]').forEach(function (input) {
+                    input.classList.toggle('has-tags', selected.length > 0);
+                });
+            }
+
+            function normalizeTag(value) {
+                return value.trim().replace(/^#/, '').replace(/\s+/g, '').toLowerCase();
+            }
+
+            function addTag(value) {
+                const tag = normalizeTag(value);
+
+                if (!tag || selectedTagValues().includes(tag)) {
+                    return false;
+                }
+
+                const inputs = form.querySelector('[data-cp-tag-inputs]');
+                const chips = form.querySelector('[data-cp-selected-tags]');
+                const textInput = form.querySelector('[data-cp-tag-text-input]');
+
+                if (!inputs || !chips || !textInput) {
+                    return false;
+                }
+
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'tags[]';
+                input.value = tag;
+                inputs.appendChild(input);
+
+                const chip = document.createElement('span');
+                chip.className = 'cp-tag-chip';
+                chip.dataset.cpTagChip = tag;
+                chip.appendChild(document.createTextNode('#' + tag + ' '));
+
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.dataset.cpRemoveTag = tag;
+                remove.textContent = 'x';
+                chip.appendChild(remove);
+                chips.insertBefore(chip, textInput);
+
+                syncTagButtons();
+                submitForm();
+                return true;
+            }
+
+            form.querySelectorAll('[data-cp-tag-text-input]').forEach(function (input) {
+                input.addEventListener('keydown', function (event) {
+                    if (event.key !== 'Enter' || !input.value.trim().startsWith('#')) {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    if (addTag(input.value)) {
+                        input.value = '';
+                    }
+                });
+            });
+
+            form.querySelectorAll('[data-cp-tag-button]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    addTag(button.dataset.tag);
+                });
+            });
+
+            form.addEventListener('click', function (event) {
+                const remove = event.target.closest('[data-cp-remove-tag]');
+
+                if (!remove) {
+                    return;
+                }
+
+                const tag = remove.dataset.cpRemoveTag;
+                form.querySelectorAll('input[name="tags[]"]').forEach(function (input) {
+                    if (input.value === tag) {
+                        input.remove();
+                    }
+                });
+
+                form.querySelectorAll('[data-cp-tag-chip="' + CSS.escape(tag) + '"]').forEach(function (chip) {
+                    chip.remove();
+                });
+
+                syncTagButtons();
+                submitForm();
+            });
+
+            syncTagButtons();
         });
     });
 </script>
