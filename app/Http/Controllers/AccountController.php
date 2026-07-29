@@ -229,7 +229,7 @@ class AccountController extends Controller
                 ->all(),
             'next_cursor' => $artworks->nextCursor()?->encode(),
             'has_more' => $artworks->hasMorePages(),
-            'total' => Artwork::where('user_id', $user->id)->count(),
+            'total' => null,
         ];
     }
 

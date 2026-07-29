@@ -6,6 +6,7 @@ use App\Models\Product as Artwork;
 use App\Models\Category;
 use App\Models\User;
 use App\Models\ArtworkReport;
+use App\Models\AppNotification;
 use App\Models\AppSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -219,7 +220,7 @@ class AdminController extends Controller
 
     private function adminReportsQuery(?string $status = null)
     {
-        $query = ArtworkReport::with(['artwork', 'reporter']);
+        $query = ArtworkReport::with(['artwork.user', 'reporter']);
 
         if ($status === 'open') {
             $query->where('status', 'open');
@@ -451,13 +452,14 @@ class AdminController extends Controller
     public function resolveReport(Request $request, ArtworkReport $report)
     {
         $data = $request->validate([
-            'status' => ['required', 'in:open,resolved,dismissed'],
-            'archive_artwork' => ['nullable', 'boolean'],
+            'status' => ['required', 'in:open,resolved,rejected'],
         ]);
 
+        $oldStatus = $report->status;
         $report->update(['status' => $data['status']]);
+        $report->loadMissing(['artwork.user', 'reporter']);
 
-        if ($request->boolean('archive_artwork')) {
+        if ($data['status'] === 'resolved') {
             $report->artwork?->update([
                 'visibility' => 'private',
                 'share_token' => null,
@@ -466,7 +468,33 @@ class AdminController extends Controller
             ]);
         }
 
+        if ($oldStatus !== $data['status'] && in_array($data['status'], ['resolved', 'rejected'], true)) {
+            $this->notifyReportDecision($report, $data['status']);
+        }
+
         return back()->with('status', 'Report updated.');
+    }
+
+    private function notifyReportDecision(ArtworkReport $report, string $status): void
+    {
+        $artworkTitle = $report->artwork->name ?? 'an artwork';
+
+        if ($report->reporter_id) {
+            AppNotification::create([
+                'user_id' => $report->reporter_id,
+                'message' => $status === 'resolved'
+                    ? 'Your report for "' . $artworkTitle . '" was approved.'
+                    : 'Your report for "' . $artworkTitle . '" was rejected.',
+            ]);
+        }
+
+        if ($status === 'resolved' && $report->artwork?->user_id) {
+            AppNotification::create([
+                'user_id' => $report->artwork->user_id,
+                'message' => 'A report against your artwork "' . $artworkTitle . '" was approved.',
+                'url' => route('account', ['tab' => 'images', 'visibility' => 'archived']),
+            ]);
+        }
     }
 
     public function destroyArtwork(string $username, Artwork $artwork)

@@ -1,4 +1,4 @@
-<div class="cp-artwork-card" data-cursor-item="{{ $artwork->id }}">
+<div class="cp-artwork-card" data-cursor-item="profile-image-{{ $artwork->id }}">
     <a href="{{ route('artworks.show', $artwork->id) }}" class="cp-artwork-frame cp-artwork-frame-card">
         <img src="{{ $artwork->image_url }}" alt="{{ $artwork->name }}" class="cp-artwork-image-contained">
     </a>
@@ -35,7 +35,7 @@
             @endif
         </div>
         <div class="cp-card-actions">
-            @if(! $artwork->hasCompletedSales())
+            @if(! $artwork->hasCompletedSales() || $artwork->isArchived())
                 <a class="btn btn-outline-secondary btn-sm" href="{{ route('artworks.edit', ['artwork' => $artwork->id]) }}">Edit</a>
             @endif
             @if($artwork->isArchived())

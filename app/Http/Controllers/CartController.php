@@ -50,8 +50,14 @@ class CartController extends Controller
         $applicationFee = $allItems->isEmpty() ? 0 : AppSetting::integer('application_fee', AppSetting::DEFAULT_APPLICATION_FEE);
         $total = $creatorSubtotal + $applicationFee + $printboxFee;
 
-        $items = $this->cartItemsQuery($cart, $request)->get();
+        $items = $this->cartItemsQuery($cart, $request)
+            ->cursorPaginate(10)
+            ->withQueryString();
         $categories = Category::orderBy('name')->get();
+
+        if ($request->expectsJson()) {
+            return response()->json($this->cursorPayload($items, $user));
+        }
 
         return view('cart', [
             'items'      => $items,
@@ -328,6 +334,23 @@ class CartController extends Controller
         return [
             'mode' => $mode,
             'sheet_count' => $sheetCount,
+        ];
+    }
+
+    private function cursorPayload($paginator, User $viewer): array
+    {
+        return [
+            'data' => collect($paginator->items())
+                ->map(fn ($item) => view('cart.partials.cart-item-row', [
+                    'item' => $item,
+                    'viewer' => $viewer,
+                    'printboxRates' => AppSetting::printboxRates(),
+                ])->render())
+                ->values()
+                ->all(),
+            'next_cursor' => $paginator->nextCursor()?->encode(),
+            'has_more' => $paginator->hasMorePages(),
+            'total' => null,
         ];
     }
 

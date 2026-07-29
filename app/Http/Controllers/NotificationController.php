@@ -18,15 +18,7 @@ class NotificationController extends Controller
             ->withQueryString();
 
         if ($request->expectsJson()) {
-            return response()->json([
-                'data' => collect($notifications->items())
-                    ->map(fn ($notification) => view('notifications.partials.notification-row', ['notification' => $notification])->render())
-                    ->values()
-                    ->all(),
-                'next_cursor' => $notifications->nextCursor()?->encode(),
-                'has_more' => $notifications->hasMorePages(),
-                'total' => null,
-            ]);
+            return response()->json($this->cursorPayload($notifications));
         }
 
         return view('notifications.index', [
@@ -45,5 +37,18 @@ class NotificationController extends Controller
     {
         AppNotification::where('user_id', session('user_id'))->whereNull('read_at')->update(['read_at' => now()]);
         return back();
+    }
+
+    private function cursorPayload($paginator): array
+    {
+        return [
+            'data' => collect($paginator->items())
+                ->map(fn ($notification) => view('notifications.partials.notification-row', ['notification' => $notification])->render())
+                ->values()
+                ->all(),
+            'next_cursor' => $paginator->nextCursor()?->encode(),
+            'has_more' => $paginator->hasMorePages(),
+            'total' => null,
+        ];
     }
 }

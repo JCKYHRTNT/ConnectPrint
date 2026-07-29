@@ -5,6 +5,10 @@
 @section('content')
 @php
     $printboxRates = $printboxRates ?? ['bw_low' => 750, 'bw_bulk' => 500, 'color' => 750];
+    $cursorQuery = collect(request()->except('cursor'))
+        ->filter(fn ($value) => $value !== null && $value !== '')
+        ->all();
+    $cursorEndpoint = route('cart') . ($cursorQuery ? '?' . http_build_query($cursorQuery) : '');
 @endphp
 <style>
     .cp-cart-filter-panel {
@@ -97,89 +101,18 @@
     @if($items->isEmpty())
         <p class="mb-0 text-muted">{{ count(request()->except('cursor')) > 0 ? 'No matching cart items found.' : 'Your cart is empty.' }}</p>
     @else
-        <div class="d-flex flex-column gap-2">
+        <div
+            data-cursor-feed
+            data-cursor-endpoint="{{ $cursorEndpoint }}"
+            data-next-cursor="{{ $items->nextCursor()?->encode() }}"
+            data-has-more="{{ $items->hasMorePages() ? '1' : '0' }}"
+        >
+        <div class="d-flex flex-column gap-2" data-cursor-list>
             @foreach($items as $item)
-                @php
-                    $artwork = $item->artwork;
-                    $isPrintOnly = $item->printbox_requested && $artwork->canDownloadFileBy($viewer ?? null);
-                    $itemCreatorPrice = $isPrintOnly
-                        ? 0
-                        : (int) $artwork->price;
-                    $sheetCount = (int) ($item->printbox_sheet_count ?: 1);
-                    $printboxMode = $item->printbox_mode ?: 'bw';
-                    $itemPrintboxFee = $item->printbox_requested
-                        ? ($printboxMode === 'bw' && $sheetCount >= 10
-                            ? $sheetCount * $printboxRates['bw_bulk']
-                            : $sheetCount * ($printboxMode === 'color' ? $printboxRates['color'] : $printboxRates['bw_low']))
-                        : 0;
-                @endphp
-                <div class="d-flex align-items-center gap-3 border rounded p-2">
-                    <img src="{{ $artwork->image_url }}" alt="{{ $artwork->name }}" style="width:86px;height:86px;object-fit:cover;border-radius:8px;">
-                    <div class="flex-grow-1">
-                        <div style="font-weight:700;">{{ $artwork->name }}</div>
-                        <div class="text-muted small">Creator: {{ $artwork->creatorName() }}</div>
-                        @if($itemCreatorPrice > 0 && ! $isPrintOnly)
-                            <div style="font-weight:700;color:var(--tb-blue);">Creator Price: Rp{{ number_format($itemCreatorPrice, 0, ',', '.') }}</div>
-                        @endif
-                        @if($isPrintOnly)
-                            <div class="small text-muted">
-                                Printbox sheets total: Rp{{ number_format($itemPrintboxFee, 0, ',', '.') }}
-                                ({{ $sheetCount }} sheet{{ $sheetCount === 1 ? '' : 's' }})
-                            </div>
-                            <form method="POST" action="{{ route('cart.item.printbox.update', ['item' => $item->id]) }}" class="cp-cart-printbox-panel" data-cart-printbox-submit-form>
-                                @csrf
-                                <input type="hidden" name="printbox_requested" value="1">
-                                <div class="cp-cart-printbox-grid">
-                                    <div>
-                                        <label class="form-label small" for="printboxMode{{ $item->id }}">Print type</label>
-                                        <select class="form-select form-select-sm" id="printboxMode{{ $item->id }}" name="printbox_mode" data-cart-printbox-autosubmit>
-                                            <option value="bw" @selected($printboxMode === 'bw')>Black and White</option>
-                                            <option value="color" @selected($printboxMode === 'color')>Color / Partial Color</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="form-label small" for="printboxSheets{{ $item->id }}">Sheets</label>
-                                        <input class="form-control form-control-sm" id="printboxSheets{{ $item->id }}" type="number" name="printbox_sheet_count" min="1" max="200" value="{{ $sheetCount }}" data-cart-printbox-autosubmit>
-                                    </div>
-                                </div>
-                            </form>
-                        @else
-                            @if($item->printbox_requested && $itemPrintboxFee > 0)
-                                <div class="small text-muted">
-                                    Printbox sheets total: Rp{{ number_format($itemPrintboxFee, 0, ',', '.') }}
-                                    ({{ $sheetCount }} sheet{{ $sheetCount === 1 ? '' : 's' }})
-                                </div>
-                            @endif
-                            <form method="POST" action="{{ route('cart.item.printbox.update', ['item' => $item->id]) }}" class="cp-cart-printbox-panel" data-cart-printbox-form data-cart-printbox-submit-form>
-                                @csrf
-                                <label class="form-check-label d-inline-flex align-items-center gap-2 text-muted small">
-                                    <input class="form-check-input m-0" type="checkbox" name="printbox_requested" value="1" @checked($item->printbox_requested) data-cart-printbox-toggle>
-                                    <span>Print with Printbox</span>
-                                </label>
-                                <div class="{{ $item->printbox_requested ? '' : 'd-none' }} mt-2" data-cart-printbox-options>
-                                    <div class="cp-cart-printbox-grid">
-                                        <div>
-                                            <label class="form-label small" for="printboxMode{{ $item->id }}">Print type</label>
-                                            <select class="form-select form-select-sm" id="printboxMode{{ $item->id }}" name="printbox_mode" data-cart-printbox-autosubmit>
-                                                <option value="bw" @selected($printboxMode === 'bw')>Black and White</option>
-                                                <option value="color" @selected($printboxMode === 'color')>Color / Partial Color</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label class="form-label small" for="printboxSheets{{ $item->id }}">Sheets</label>
-                                            <input class="form-control form-control-sm" id="printboxSheets{{ $item->id }}" type="number" name="printbox_sheet_count" min="1" max="200" value="{{ $sheetCount }}" data-cart-printbox-autosubmit>
-                                        </div>
-                                    </div>
-                                </div>
-                            </form>
-                        @endif
-                    </div>
-                    <form method="POST" action="{{ route('cart.item.update', ['item' => $item->id]) }}">
-                        @csrf
-                        <button class="btn btn-outline-danger btn-sm" type="submit">Remove</button>
-                    </form>
-                </div>
+                @include('cart.partials.cart-item-row', ['item' => $item, 'viewer' => $viewer, 'printboxRates' => $printboxRates])
             @endforeach
+        </div>
+            @include('partials.cursor-feed-footer')
         </div>
 
         <div class="mt-3 p-3 border rounded">
@@ -241,7 +174,7 @@
             });
         });
 
-        document.querySelectorAll('[data-cart-printbox-form]').forEach(function (form) {
+        function syncPrintboxOptions(form) {
             const toggle = form.querySelector('[data-cart-printbox-toggle]');
             const options = form.querySelector('[data-cart-printbox-options]');
 
@@ -249,36 +182,47 @@
                 return;
             }
 
-            function syncOptions() {
-                options.classList.toggle('d-none', !toggle.checked);
+            options.classList.toggle('d-none', !toggle.checked);
+        }
+
+        document.querySelectorAll('[data-cart-printbox-form]').forEach(syncPrintboxOptions);
+
+        document.addEventListener('change', function (event) {
+            const toggle = event.target.closest('[data-cart-printbox-toggle]');
+
+            if (toggle) {
+                const form = toggle.closest('[data-cart-printbox-form]');
+                syncPrintboxOptions(form);
+                form.requestSubmit();
+                return;
             }
 
-            toggle.addEventListener('change', function () {
-                syncOptions();
+            const instantPrintboxInput = event.target.closest('[data-cart-printbox-autosubmit]');
+            if (instantPrintboxInput) {
+                instantPrintboxInput.closest('[data-cart-printbox-submit-form]')?.requestSubmit();
+            }
+        });
+
+        const printboxTimers = new WeakMap();
+        document.addEventListener('input', function (event) {
+            const input = event.target.closest('[data-cart-printbox-autosubmit]');
+
+            if (!input || input.type !== 'number') {
+                return;
+            }
+
+            const form = input.closest('[data-cart-printbox-submit-form]');
+            if (!form) {
+                return;
+            }
+
+            window.clearTimeout(printboxTimers.get(form));
+            printboxTimers.set(form, window.setTimeout(function () {
                 form.requestSubmit();
-            });
-
-            syncOptions();
+            }, 500));
         });
 
-        document.querySelectorAll('[data-cart-printbox-submit-form]').forEach(function (form) {
-            let timer = null;
-
-            form.querySelectorAll('[data-cart-printbox-autosubmit]').forEach(function (input) {
-                input.addEventListener('change', function () {
-                    form.requestSubmit();
-                });
-
-                if (input.type === 'number') {
-                    input.addEventListener('input', function () {
-                        window.clearTimeout(timer);
-                        timer = window.setTimeout(function () {
-                            form.requestSubmit();
-                        }, 500);
-                    });
-                }
-            });
-        });
     });
 </script>
+@include('partials.cursor-feed-script')
 @endsection

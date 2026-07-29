@@ -6,7 +6,6 @@ use App\Models\AppNotification;
 use App\Models\AppSetting;
 use App\Models\Category;
 use App\Models\Product as Artwork;
-use App\Models\PurchaseItem;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -66,7 +65,7 @@ class ArtworkController extends Controller
     public function edit(Artwork $artwork)
     {
         $this->authorizeOwner($artwork);
-        if ($artwork->hasCompletedSales()) {
+        if ($artwork->hasCompletedSales() && ! $artwork->isArchived()) {
             return redirect()
                 ->route('account', ['tab' => 'images'])
                 ->with('error', 'Sold artwork cannot be edited.');
@@ -83,13 +82,14 @@ class ArtworkController extends Controller
     public function update(Request $request, Artwork $artwork)
     {
         $this->authorizeOwner($artwork);
-        if ($artwork->hasCompletedSales()) {
+        if ($artwork->hasCompletedSales() && ! $artwork->isArchived()) {
             return redirect()
                 ->route('account', ['tab' => 'images'])
                 ->with('error', 'Sold artwork cannot be edited.');
         }
 
         $data = $this->validatedData($request, false);
+        $wasArchived = $artwork->isArchived();
 
         $updates = [
             'name' => $data['title'],
@@ -101,7 +101,7 @@ class ArtworkController extends Controller
             'price' => $request->boolean('is_printable') ? (int) $data['creator_price'] : 0,
             'moderation_status' => 'approved',
             'published_at' => $data['visibility'] !== 'private' ? ($artwork->published_at ?: now()) : null,
-            'archived_at' => null,
+            'archived_at' => $artwork->archived_at,
         ];
 
         if ($request->hasFile('image')) {
@@ -113,7 +113,12 @@ class ArtworkController extends Controller
 
         $this->syncTags($artwork, $request->input('tags'));
 
-        return redirect()->route('account', ['tab' => 'images'])->with('success', 'Artwork updated.');
+        return redirect()
+            ->route('account', array_filter([
+                'tab' => 'images',
+                'visibility' => $wasArchived ? 'archived' : null,
+            ]))
+            ->with('success', 'Artwork updated.');
     }
 
     public function saveDraft(Request $request, ?Artwork $artwork = null)
