@@ -7,6 +7,7 @@ use App\Models\Product as Artwork;
 use App\Models\Category;
 use App\Models\Tag;
 use App\Models\User;
+use App\Models\AppSetting;
 use Illuminate\Support\Str;
 
 class HomeController extends Controller
@@ -189,10 +190,8 @@ class HomeController extends Controller
 
         $artwork = Artwork::with(['category', 'user', 'tags'])->findOrFail((int) $id);
         $viewer = session('user_id') ? User::find(session('user_id')) : null;
-        $isOwner = $viewer && (int) $viewer->id === (int) $artwork->user_id;
-        $isAdmin = $viewer && $viewer->role === 'admin';
 
-        if (! $artwork->isApprovedPublic() && ! $isOwner && ! $isAdmin) {
+        if (! $artwork->canBeViewedBy($viewer)) {
             abort(403);
         }
 
@@ -200,6 +199,7 @@ class HomeController extends Controller
             'artwork' => $artwork,
             'viewer' => $viewer,
             'canPurchase' => $artwork->canBePurchasedBy($viewer),
+            'printboxRates' => AppSetting::printboxRates(),
         ]);
     }
 }

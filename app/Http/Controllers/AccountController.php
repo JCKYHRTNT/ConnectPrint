@@ -182,6 +182,7 @@ class AccountController extends Controller
             'artworkCount' => Artwork::where('user_id', $user->id)->count(),
             'publicArtworkCount' => Artwork::where('user_id', $user->id)
                 ->where('visibility', 'public')
+                ->whereNull('archived_at')
                 ->whereNotIn('moderation_status', ['draft', 'rejected'])
                 ->count(),
             'purchaseCount' => $user->purchases()->count(),
@@ -192,6 +193,13 @@ class AccountController extends Controller
     private function accountImagesQuery(User $user, Request $request)
     {
         $query = Artwork::with(['category', 'tags', 'user'])
+            ->withCount([
+                'purchaseItems as completed_sales_count' => fn ($query) => $query
+                    ->where('creator_price', '>', 0)
+                    ->whereHas('purchase', fn ($purchaseQuery) => $purchaseQuery
+                        ->where('status', 'completed')
+                        ->where('user_id', '!=', $user->id)),
+            ])
             ->where('user_id', $user->id);
 
         $search = trim((string) $request->input('q', ''));
@@ -213,8 +221,10 @@ class AccountController extends Controller
             $query->where('category_id', $request->integer('category'));
         }
 
-        if (in_array($request->input('visibility'), ['public', 'unlisted', 'private', 'archived'], true)) {
-            $query->where('visibility', $request->input('visibility'));
+        if ($request->input('visibility') === 'archived') {
+            $query->whereNotNull('archived_at');
+        } elseif (in_array($request->input('visibility'), ['public', 'unlisted', 'private'], true)) {
+            $query->where('visibility', $request->input('visibility'))->whereNull('archived_at');
         }
 
         if ($request->input('printable') === 'printable') {
@@ -266,7 +276,11 @@ class AccountController extends Controller
         }
 
         $query = PurchaseItem::with(['purchase.user', 'artwork'])
-            ->where('creator_id', $user->id);
+            ->where('creator_id', $user->id)
+            ->where('creator_price', '>', 0)
+            ->whereHas('purchase', fn ($purchaseQuery) => $purchaseQuery
+                ->where('status', 'completed')
+                ->where('user_id', '!=', $user->id));
 
         if ($search !== '') {
             $query->where(function ($subQuery) use ($search) {

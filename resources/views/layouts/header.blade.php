@@ -251,10 +251,6 @@
                     </a>
                 @endif
 
-                <a href="{{ route('printbox') }}" class="tb-pill-link d-inline-flex align-items-center" style="gap:0.35rem;">
-                    Printbox
-                </a>
-
                 {{-- CART --}}
                 @if($loggedIn)
                     <a href="{{ route('cart') }}"
@@ -269,6 +265,14 @@
                     style="gap:0.35rem;">
                         <img src="{{ asset('images/cart_icon.png') }}" alt="Cart" style="height:16px;width:16px;opacity:0.85;">
                         Cart
+                    </a>
+                @endif
+
+                @if($isAdmin)
+                    <a href="{{ route('admin.crud.short') }}"
+                    class="tb-pill-link d-inline-flex align-items-center"
+                    style="gap:0.35rem;">
+                        Admin
                     </a>
                 @endif
 

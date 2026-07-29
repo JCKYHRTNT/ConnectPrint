@@ -35,9 +35,6 @@ Route::get('/artworks/{artwork}/preview', [ArtworkController::class, 'preview'])
 Route::get('/creators/{user}', [CreatorController::class, 'show'])
     ->name('creators.show');
 
-Route::view('/print-with-printbox', 'printbox')
-    ->name('printbox');
-
 Route::middleware('auth.user')->group(function () {
     Route::get('/artworks/create', [ArtworkController::class, 'create'])->name('artworks.create');
     Route::post('/artworks', [ArtworkController::class, 'store'])->name('artworks.store');
@@ -45,6 +42,7 @@ Route::middleware('auth.user')->group(function () {
     Route::get('/artworks/{artwork}/edit', [ArtworkController::class, 'edit'])->whereNumber('artwork')->name('artworks.edit');
     Route::put('/artworks/{artwork}', [ArtworkController::class, 'update'])->whereNumber('artwork')->name('artworks.update');
     Route::post('/artworks/{artwork}/draft', [ArtworkController::class, 'saveDraft'])->whereNumber('artwork')->name('artworks.draft.update');
+    Route::patch('/artworks/{artwork}/visibility', [ArtworkController::class, 'updateVisibility'])->whereNumber('artwork')->name('artworks.visibility.update');
     Route::patch('/artworks/{artwork}/archive', [ArtworkController::class, 'archive'])->whereNumber('artwork')->name('artworks.archive');
     Route::patch('/artworks/{artwork}/restore', [ArtworkController::class, 'restore'])->whereNumber('artwork')->name('artworks.restore');
     Route::delete('/artworks/{artwork}', [ArtworkController::class, 'destroy'])->whereNumber('artwork')->name('artworks.destroy');
@@ -68,6 +66,10 @@ Route::post('/cart/artworks/{artwork}', [CartController::class, 'add'])
 Route::post('/cart/items/{item}/update', [CartController::class, 'update'])
     ->middleware('auth.user')
     ->name('cart.item.update');
+
+Route::post('/cart/items/{item}/printbox', [CartController::class, 'updatePrintbox'])
+    ->middleware('auth.user')
+    ->name('cart.item.printbox.update');
 
 // User Cart Checkout
 Route::post('/cart/checkout', [CartController::class, 'checkout'])
@@ -112,6 +114,11 @@ Route::post('/a/{username}/account/delete', [AccountController::class, 'destroy'
 
 // Admin
 Route::middleware('admin')->group(function () {
+    Route::get('/admin', function () {
+        $admin = \App\Models\User::findOrFail(session('user_id'));
+
+        return redirect()->route('admin.crud', ['username' => $admin->slug] + request()->query());
+    })->name('admin.crud.short');
 
     // Admin Home
     Route::get('/a/{username}', [AdminController::class, 'indexForUser'])
@@ -128,6 +135,9 @@ Route::middleware('admin')->group(function () {
     // Demote admin
     Route::post('/a/{username}/admin/demote', [AdminController::class, 'demoteAdmin'])
         ->name('admin.crud.demote');
+
+    Route::post('/a/{username}/admin/fees', [AdminController::class, 'updateFees'])
+        ->name('admin.fees.update');
 
     // ADMIN ARTWORK DETAIL
     Route::get('/a/{username}/artworks/{artwork}', [AdminController::class, 'artworkDetail'])

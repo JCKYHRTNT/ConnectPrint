@@ -99,7 +99,7 @@ class Product extends Model
 
     public function isArchived(): bool
     {
-        return $this->visibility === 'archived';
+        return $this->archived_at !== null;
     }
 
     public function isApprovedPublic(): bool
@@ -141,5 +141,36 @@ class Product extends Model
         }
 
         return $user->hasPurchased($this);
+    }
+
+    public function canBeViewedBy(?User $user): bool
+    {
+        if ($this->isApprovedPublic()) {
+            return true;
+        }
+
+        if (! $user) {
+            return false;
+        }
+
+        if ((int) $this->user_id === (int) $user->id || $user->role === 'admin') {
+            return true;
+        }
+
+        return $user->hasPurchased($this);
+    }
+
+    public function hasCompletedSales(): bool
+    {
+        if (array_key_exists('completed_sales_count', $this->attributes)) {
+            return (int) $this->attributes['completed_sales_count'] > 0;
+        }
+
+        return $this->purchaseItems()
+            ->where('creator_price', '>', 0)
+            ->whereHas('purchase', fn ($query) => $query
+                ->where('status', 'completed')
+                ->whereColumn('purchases.user_id', '!=', 'purchase_items.creator_id'))
+            ->exists();
     }
 }

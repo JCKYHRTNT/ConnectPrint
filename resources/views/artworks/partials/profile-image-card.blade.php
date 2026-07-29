@@ -12,6 +12,9 @@
                 <span class="badge text-bg-info">{{ ucfirst($artwork->moderation_status) }}</span>
             @endif
             <span class="badge text-bg-dark">{{ ucfirst($artwork->visibility) }}</span>
+            @if($artwork->isArchived())
+                <span class="badge text-bg-secondary">Archived</span>
+            @endif
         </div>
         <h3 class="mb-1" style="font-size:1rem;font-weight:700;">{{ $artwork->name }}</h3>
         <div class="text-muted small">by {{ $artwork->creatorName() }}</div>
@@ -32,7 +35,9 @@
             @endif
         </div>
         <div class="cp-card-actions">
-            <a class="btn btn-outline-secondary btn-sm" href="{{ route('artworks.edit', ['artwork' => $artwork->id]) }}">Edit</a>
+            @if(! $artwork->hasCompletedSales())
+                <a class="btn btn-outline-secondary btn-sm" href="{{ route('artworks.edit', ['artwork' => $artwork->id]) }}">Edit</a>
+            @endif
             @if($artwork->isArchived())
                 <form method="POST" action="{{ route('artworks.restore', ['artwork' => $artwork->id]) }}">
                     @csrf

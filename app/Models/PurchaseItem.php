@@ -13,7 +13,16 @@ class PurchaseItem extends Model
         'artwork_title_snapshot',
         'creator_name_snapshot',
         'creator_price',
+        'printbox_fee',
+        'printbox_requested',
+        'printbox_mode',
+        'printbox_sheet_count',
         'original_path_snapshot',
+    ];
+
+    protected $casts = [
+        'printbox_requested' => 'boolean',
+        'printbox_sheet_count' => 'integer',
     ];
 
     public function purchase()

@@ -11,7 +11,10 @@ class Purchase extends Model
         'purchase_number',
         'status',
         'payment_status',
+        'payment_method',
         'subtotal',
+        'application_fee',
+        'printbox_fee',
         'total',
     ];
 

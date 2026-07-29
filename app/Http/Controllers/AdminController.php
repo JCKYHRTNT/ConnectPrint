@@ -6,6 +6,7 @@ use App\Models\Product as Artwork;
 use App\Models\Category;
 use App\Models\User;
 use App\Models\ArtworkReport;
+use App\Models\AppSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -157,8 +158,39 @@ class AdminController extends Controller
             'categories'      => Category::orderBy('id')->get(),
             'eligibleUsers'   => $eligibleUsers,
             'demotableAdmins' => $demotableAdmins,
+            'applicationFee' => AppSetting::integer('application_fee', AppSetting::DEFAULT_APPLICATION_FEE),
+            'printboxRates' => AppSetting::printboxRates(),
             'reports' => ArtworkReport::with(['artwork', 'reporter'])->where('status', 'open')->latest()->get(),
         ]);
+    }
+
+    public function updateFees(Request $request, string $username)
+    {
+        if (!session('user_id') || session('role') !== 'admin') {
+            return redirect()->route('login');
+        }
+
+        $admin = User::findOrFail(session('user_id'));
+
+        if ($username !== $admin->slug) {
+            return redirect()->route('admin.crud', ['username' => $admin->slug]);
+        }
+
+        $data = $request->validate([
+            'application_fee' => ['required', 'integer', 'min:0'],
+            'printbox_bw_low_fee' => ['required', 'integer', 'min:0'],
+            'printbox_bw_bulk_fee' => ['required', 'integer', 'min:0'],
+            'printbox_color_fee' => ['required', 'integer', 'min:0'],
+        ]);
+
+        AppSetting::setInteger('application_fee', (int) $data['application_fee']);
+        AppSetting::setInteger('printbox_bw_low_fee', (int) $data['printbox_bw_low_fee']);
+        AppSetting::setInteger('printbox_bw_bulk_fee', (int) $data['printbox_bw_bulk_fee']);
+        AppSetting::setInteger('printbox_color_fee', (int) $data['printbox_color_fee']);
+
+        return redirect()
+            ->route('admin.crud', ['username' => $admin->slug])
+            ->with('status', 'Fee settings updated.');
     }
 
     /**
@@ -313,7 +345,12 @@ class AdminController extends Controller
         $report->update(['status' => $data['status']]);
 
         if ($request->boolean('archive_artwork')) {
-            $report->artwork?->update(['visibility' => 'archived', 'archived_at' => now()]);
+            $report->artwork?->update([
+                'visibility' => 'private',
+                'share_token' => null,
+                'published_at' => null,
+                'archived_at' => now(),
+            ]);
         }
 
         return back()->with('status', 'Report updated.');

@@ -96,6 +96,63 @@
         </div>
     </div>
 
+    <h2 style="font-size:1rem;font-weight:600;margin-bottom:0.5rem;">Fee Settings</h2>
+    <div class="tb-card p-3 mb-4">
+        <form method="POST" action="{{ route('admin.fees.update', ['username' => $adminSlug]) }}" class="row g-2 align-items-end">
+            @csrf
+            <div class="col-md-3">
+                <label class="form-label" for="application_fee">Application fee (Rp)</label>
+                <input
+                    type="number"
+                    id="application_fee"
+                    name="application_fee"
+                    class="form-control"
+                    min="0"
+                    value="{{ old('application_fee', $applicationFee ?? 0) }}"
+                    required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="printbox_bw_low_fee">BW 0-9 (Rp/sheet)</label>
+                <input
+                    type="number"
+                    id="printbox_bw_low_fee"
+                    name="printbox_bw_low_fee"
+                    class="form-control"
+                    min="0"
+                    value="{{ old('printbox_bw_low_fee', $printboxRates['bw_low'] ?? 750) }}"
+                    required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="printbox_bw_bulk_fee">BW &gt;10 (Rp/sheet)</label>
+                <input
+                    type="number"
+                    id="printbox_bw_bulk_fee"
+                    name="printbox_bw_bulk_fee"
+                    class="form-control"
+                    min="0"
+                    value="{{ old('printbox_bw_bulk_fee', $printboxRates['bw_bulk'] ?? 500) }}"
+                    required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="printbox_color_fee">Color (Rp/sheet)</label>
+                <input
+                    type="number"
+                    id="printbox_color_fee"
+                    name="printbox_color_fee"
+                    class="form-control"
+                    min="0"
+                    value="{{ old('printbox_color_fee', $printboxRates['color'] ?? 750) }}"
+                    required>
+            </div>
+            <div class="col-md-3">
+                <button class="tb-btn-secondary" type="submit">Save Fees</button>
+            </div>
+        </form>
+        <div class="text-muted small mt-2">
+            Printbox fees are charged per sheet from these global admin settings.
+        </div>
+    </div>
+
     <h2 style="font-size:1rem;font-weight:600;margin-bottom:0.5rem;">Open artwork reports</h2>
     <div class="tb-card p-3 mb-4">
         @if(($reports ?? collect())->isEmpty())

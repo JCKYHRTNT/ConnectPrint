@@ -200,7 +200,7 @@
                 <label class="form-label" for="artworkVisibility">Visibility</label>
                 <select class="form-select" id="artworkVisibility" name="visibility">
                     <option value="" disabled hidden @selected($selectedVisibility === '')>-</option>
-                    @foreach(['private', 'unlisted', 'public'] as $visibility)
+                    @foreach(['private', 'public'] as $visibility)
                         <option value="{{ $visibility }}" @selected($selectedVisibility === $visibility)>{{ ucfirst($visibility) }}</option>
                     @endforeach
                 </select>

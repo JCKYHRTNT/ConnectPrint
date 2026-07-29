@@ -25,7 +25,7 @@ class ArtworkSeeder extends Seeder
             ['Jakarta Poster', 3, 4, 30000, 'public', true, 'pending', ['Poster', 'Local']],
             ['Private Draft', 2, 3, 0, 'private', false, 'approved', ['Abstract']],
             ['Hidden Geometry', 3, 5, 20000, 'unlisted', true, 'approved', ['Abstract', 'Print Ready']],
-            ['Archived Sunset', 2, 1, 18000, 'archived', true, 'approved', ['Landscape']],
+            ['Archived Sunset', 2, 1, 18000, 'private', true, 'approved', ['Landscape'], true],
             ['Forest Morning', 4, 6, 22000, 'public', true, 'approved', ['Nature', 'Landscape']],
             ['Blue Study', 4, 3, 0, 'public', false, 'approved', ['Abstract']],
             ['Festival Lines', 2, 2, 27000, 'public', true, 'rejected', ['Colorful']],
@@ -34,7 +34,8 @@ class ArtworkSeeder extends Seeder
         ];
 
         $artworks = collect($rows)->map(function ($row) use ($tags) {
-            [$name, $userId, $categoryId, $price, $visibility, $printable, $status, $tagNames] = $row;
+            [$name, $userId, $categoryId, $price, $visibility, $printable, $status, $tagNames] = array_pad($row, 9, false);
+            $isArchived = (bool) ($row[8] ?? false);
             $artwork = Artwork::create([
                 'user_id' => $userId,
                 'name' => $name,
@@ -56,8 +57,8 @@ class ArtworkSeeder extends Seeder
                 'is_printable' => $printable,
                 'moderation_status' => $status,
                 'moderation_reason' => $status === 'rejected' ? 'Seeded rejection example.' : null,
-                'published_at' => in_array($visibility, ['public', 'unlisted'], true) ? now() : null,
-                'archived_at' => $visibility === 'archived' ? now() : null,
+                'published_at' => ! $isArchived && in_array($visibility, ['public', 'unlisted'], true) ? now() : null,
+                'archived_at' => $isArchived ? now() : null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

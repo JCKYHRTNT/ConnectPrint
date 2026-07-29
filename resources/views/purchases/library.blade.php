@@ -27,14 +27,16 @@
                         <div class="p-3">
                             <h2 class="mb-1" style="font-size:1rem;font-weight:700;">{{ $item->artwork_title_snapshot }}</h2>
                             <div class="text-muted small mb-2">
-                                Purchased {{ $item->purchase->created_at->format('Y-m-d') }} for Rp{{ number_format($item->creator_price, 0, ',', '.') }}
+                                Purchased {{ $item->purchase->created_at->format('Y-m-d') }}
+                                @if((int) $item->creator_price > 0)
+                                    for Rp{{ number_format($item->creator_price, 0, ',', '.') }}
+                                @endif
                             </div>
                             <div class="d-flex gap-2 flex-wrap">
                                 <a class="btn btn-outline-secondary btn-sm" href="{{ route('purchases.show', ['purchase' => $item->purchase_id]) }}">View purchase</a>
                                 @if($item->artwork && $item->artwork->canDownloadFileBy($viewer))
                                     <a class="btn btn-outline-primary btn-sm" href="{{ route('artworks.print-file', ['artwork' => $item->product_id]) }}">Open print-ready file</a>
                                 @endif
-                                <a class="btn btn-outline-secondary btn-sm" href="{{ route('printbox') }}">Printbox instructions</a>
                             </div>
                         </div>
                     </div>

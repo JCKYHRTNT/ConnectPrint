@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppNotification;
+use App\Models\AppSetting;
 use App\Models\Category;
 use App\Models\Product as Artwork;
 use App\Models\PurchaseItem;
@@ -65,6 +66,11 @@ class ArtworkController extends Controller
     public function edit(Artwork $artwork)
     {
         $this->authorizeOwner($artwork);
+        if ($artwork->hasCompletedSales()) {
+            return redirect()
+                ->route('account', ['tab' => 'images'])
+                ->with('error', 'Sold artwork cannot be edited.');
+        }
 
         return view('artworks.form', [
             'artwork' => $artwork->load('tags'),
@@ -77,6 +83,12 @@ class ArtworkController extends Controller
     public function update(Request $request, Artwork $artwork)
     {
         $this->authorizeOwner($artwork);
+        if ($artwork->hasCompletedSales()) {
+            return redirect()
+                ->route('account', ['tab' => 'images'])
+                ->with('error', 'Sold artwork cannot be edited.');
+        }
+
         $data = $this->validatedData($request, false);
 
         $updates = [
@@ -110,6 +122,7 @@ class ArtworkController extends Controller
 
         if ($artwork) {
             $this->authorizeOwner($artwork);
+            abort_if($artwork->hasCompletedSales(), 403, 'Sold artwork cannot be edited.');
         }
 
         $data = $request->validate([
@@ -128,6 +141,8 @@ class ArtworkController extends Controller
             $artwork = Artwork::where('id', $data['draft_artwork_id'])
                 ->where('user_id', $user->id)
                 ->first();
+
+            abort_if($artwork && $artwork->hasCompletedSales(), 403, 'Sold artwork cannot be edited.');
         }
 
         $title = trim((string) ($data['title'] ?? ''));
@@ -186,7 +201,12 @@ class ArtworkController extends Controller
     public function archive(Artwork $artwork)
     {
         $this->authorizeOwner($artwork);
-        $artwork->update(['visibility' => 'archived', 'archived_at' => now()]);
+        $artwork->update([
+            'visibility' => 'private',
+            'share_token' => null,
+            'published_at' => null,
+            'archived_at' => now(),
+        ]);
         return back()->with('success', 'Artwork archived.');
     }
 
@@ -201,11 +221,34 @@ class ArtworkController extends Controller
     {
         $this->authorizeOwner($artwork);
         if ($artwork->purchaseItems()->exists()) {
-            $artwork->update(['visibility' => 'archived', 'archived_at' => now()]);
+            $artwork->update([
+                'visibility' => 'private',
+                'share_token' => null,
+                'published_at' => null,
+                'archived_at' => now(),
+            ]);
             return back()->with('error', 'Artwork has purchases, so it was archived instead of deleted.');
         }
         $artwork->delete();
         return back()->with('success', 'Artwork deleted.');
+    }
+
+    public function updateVisibility(Request $request, Artwork $artwork)
+    {
+        $this->authorizeOwner($artwork);
+
+        $data = $request->validate([
+            'visibility' => ['required', 'in:public,unlisted,private'],
+        ]);
+
+        $artwork->update([
+            'visibility' => $data['visibility'],
+            'share_token' => $data['visibility'] === 'unlisted' ? ($artwork->share_token ?: Str::random(40)) : null,
+            'published_at' => $data['visibility'] !== 'private' ? ($artwork->published_at ?: now()) : null,
+            'archived_at' => null,
+        ]);
+
+        return back()->with('success', 'Visibility updated.');
     }
 
     public function shared(string $shareToken)
@@ -222,22 +265,18 @@ class ArtworkController extends Controller
             'artwork' => $artwork,
             'viewer' => session('user_id') ? User::find(session('user_id')) : null,
             'canPurchase' => $artwork->canBePurchasedBy(session('user_id') ? User::find(session('user_id')) : null),
+            'printboxRates' => AppSetting::printboxRates(),
         ]);
     }
 
     public function preview(Artwork $artwork)
     {
         $viewer = session('user_id') ? User::find(session('user_id')) : null;
-        $isOwner = $viewer && (int) $viewer->id === (int) $artwork->user_id;
-        $isAdmin = $viewer && $viewer->role === 'admin';
-        $isPublic = $artwork->visibility === 'public'
-            && ! in_array($artwork->moderation_status, ['draft', 'rejected'], true)
-            && ! $artwork->isArchived();
         $isUnlisted = $artwork->visibility === 'unlisted'
             && ! in_array($artwork->moderation_status, ['draft', 'rejected'], true)
             && ! $artwork->isArchived();
 
-        abort_unless($isOwner || $isAdmin || $isPublic || $isUnlisted, 403);
+        abort_unless($artwork->canBeViewedBy($viewer) || $isUnlisted, 403);
 
         if ($artwork->preview_path) {
             if (Storage::disk('public')->exists($artwork->preview_path)) {

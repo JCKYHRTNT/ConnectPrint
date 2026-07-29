@@ -14,6 +14,14 @@ class CartItem extends Model
         'cart_id',
         'product_id',
         'quantity',
+        'printbox_requested',
+        'printbox_mode',
+        'printbox_sheet_count',
+    ];
+
+    protected $casts = [
+        'printbox_requested' => 'boolean',
+        'printbox_sheet_count' => 'integer',
     ];
 
     public function cart() 
