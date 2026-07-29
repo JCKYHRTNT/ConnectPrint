@@ -17,13 +17,13 @@
     <td>
         @if($item->role !== 'admin')
             @if($item->suspended_at)
-                <form method="POST" action="{{ route('admin.users.unsuspend', ['username' => $adminSlug, 'user' => $item->id]) }}">
+                <form method="POST" action="{{ route('admin.users.unsuspend', ['user' => $item->id]) }}">
                     @csrf
                     @method('PATCH')
                     <button class="btn btn-outline-success btn-sm" type="submit">Unsuspend</button>
                 </form>
             @else
-                <form method="POST" action="{{ route('admin.users.suspend', ['username' => $adminSlug, 'user' => $item->id]) }}" onsubmit="return confirm('Suspend this user?');">
+                <form method="POST" action="{{ route('admin.users.suspend', ['user' => $item->id]) }}" onsubmit="return confirm('Suspend this user?');">
                     @csrf
                     @method('PATCH')
                     <button class="btn btn-outline-danger btn-sm" type="submit">Suspend</button>

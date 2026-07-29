@@ -169,14 +169,6 @@
     }
 </style>
 
-<section class="mb-4">
-    <div class="tb-card p-4" style="background:#0f172a;color:#fff;border:none;">
-        <span class="badge rounded-pill" style="background:#facc15;color:#111827;">CONNECTPRINT MARKETPLACE</span>
-        <h1 class="mt-2 mb-2" style="font-size:1.7rem;font-weight:700;">Browse printable artwork</h1>
-        <p class="mb-0" style="color:#d1d5db;">Purchase creator-priced print-ready files here, then submit them manually to Printbox. Printbox fees and QR codes are handled by Printbox.</p>
-    </div>
-</section>
-
 <section class="tb-card p-3 mb-3">
     <form method="GET" action="{{ $categoryBaseRoute }}" class="cp-filter-grid" id="marketplaceFilterForm">
         <div>

@@ -114,36 +114,33 @@ Route::post('/a/{username}/account/delete', [AccountController::class, 'destroy'
 
 // Admin
 Route::middleware('admin')->group(function () {
-    Route::get('/admin', function () {
-        $admin = \App\Models\User::findOrFail(session('user_id'));
-
-        return redirect()->route('admin.crud', ['username' => $admin->slug] + request()->query());
-    })->name('admin.crud.short');
+    Route::get('/admin', [AdminController::class, 'crud'])
+        ->name('admin.crud');
 
     // Admin Home
     Route::get('/a/{username}', [AdminController::class, 'indexForUser'])
         ->name('admin.user');
 
-    // Admin CRUD
-    Route::get('/a/{username}/admin', [AdminController::class, 'crud'])
-        ->name('admin.crud');
+    Route::get('/a/{username}/admin', function () {
+        return redirect()->route('admin.crud', request()->query());
+    });
 
     // Promote admin
-    Route::post('/a/{username}/admin/promote', [AdminController::class, 'promoteAdmin'])
+    Route::post('/admin/promote', [AdminController::class, 'promoteAdmin'])
         ->name('admin.crud.promote');
 
     // Demote admin
-    Route::post('/a/{username}/admin/demote', [AdminController::class, 'demoteAdmin'])
+    Route::post('/admin/demote', [AdminController::class, 'demoteAdmin'])
         ->name('admin.crud.demote');
 
-    Route::post('/a/{username}/admin/fees', [AdminController::class, 'updateFees'])
+    Route::post('/admin/fees', [AdminController::class, 'updateFees'])
         ->name('admin.fees.update');
 
-    Route::patch('/a/{username}/admin/users/{user}/suspend', [AdminController::class, 'suspendUser'])
+    Route::patch('/admin/users/{user}/suspend', [AdminController::class, 'suspendUser'])
         ->whereNumber('user')
         ->name('admin.users.suspend');
 
-    Route::patch('/a/{username}/admin/users/{user}/unsuspend', [AdminController::class, 'unsuspendUser'])
+    Route::patch('/admin/users/{user}/unsuspend', [AdminController::class, 'unsuspendUser'])
         ->whereNumber('user')
         ->name('admin.users.unsuspend');
 
@@ -168,20 +165,20 @@ Route::middleware('admin')->group(function () {
         ->whereNumber('artwork')
         ->name('admin.artworks.destroy');
 
-    Route::patch('/a/{username}/admin/reports/{report}', [AdminController::class, 'resolveReport'])
+    Route::patch('/admin/reports/{report}', [AdminController::class, 'resolveReport'])
         ->name('admin.reports.resolve');
 
     // CATEGORY CRUD
-    Route::post('/a/{username}/categories', [AdminController::class, 'storeCategory'])
+    Route::post('/admin/categories', [AdminController::class, 'storeCategory'])
         ->name('admin.categories.store');
 
-    Route::get('/a/{username}/categories/{category}/edit', [AdminController::class, 'editCategory'])
+    Route::get('/admin/categories/{category}/edit', [AdminController::class, 'editCategory'])
         ->name('admin.categories.edit');
 
-    Route::put('/a/{username}/categories/{category}', [AdminController::class, 'updateCategory'])
+    Route::put('/admin/categories/{category}', [AdminController::class, 'updateCategory'])
         ->name('admin.categories.update');
 
-    Route::delete('/a/{username}/categories/{category}', [AdminController::class, 'destroyCategory'])
+    Route::delete('/admin/categories/{category}', [AdminController::class, 'destroyCategory'])
         ->name('admin.categories.destroy');
 });
 

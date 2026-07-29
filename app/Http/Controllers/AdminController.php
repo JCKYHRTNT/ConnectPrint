@@ -122,25 +122,16 @@ class AdminController extends Controller
     }
 
     /**
-     * Admin CRUD hub: /a/{username}/admin
+     * Admin CRUD hub: /admin
      */
-    public function crud(Request $request, string $username)
+    public function crud(Request $request)
     {
         if (!session('user_id')) {
             return redirect()->route('login');
         }
 
-        $admin        = User::findOrFail(session('user_id'));
-        $expectedSlug = $admin->slug;
-
-        if ($username !== $expectedSlug) {
-            return redirect()->route('admin.crud', [
-                'username' => $expectedSlug,
-            ] + $request->query());
-        }
-
         if ($request->expectsJson()) {
-            return response()->json($this->adminCursorPayload($request, $username));
+            return response()->json($this->adminCursorPayload($request));
         }
 
         $activeAdminTab = $request->input('admin_tab', 'admins');
@@ -250,26 +241,25 @@ class AdminController extends Controller
         return in_array($status, ['open', 'closed'], true) ? $status : null;
     }
 
-    private function adminCursorPayload(Request $request, string $username): array
+    private function adminCursorPayload(Request $request): array
     {
         $section = $request->input('admin_tab', 'admins');
 
         if ($section === 'categories') {
             $items = $this->adminCategoriesQuery(trim((string) $request->input('admin_category_q', '')))->cursorPaginate(12)->withQueryString();
 
-            return $this->cursorPayload($items, 'admin.partials.category-row', ['adminSlug' => $username]);
+            return $this->cursorPayload($items, 'admin.partials.category-row');
         }
 
         if ($section === 'reports') {
             $items = $this->adminReportsQuery($this->normalizeReportStatus($request))->cursorPaginate(10)->withQueryString();
 
-            return $this->cursorPayload($items, 'admin.partials.report-row', ['adminSlug' => $username]);
+            return $this->cursorPayload($items, 'admin.partials.report-row');
         }
 
         $items = $this->adminUsersQuery(trim((string) $request->input('admin_user_q', '')))->cursorPaginate(12)->withQueryString();
 
         return $this->cursorPayload($items, 'admin.partials.user-row', [
-            'adminSlug' => $username,
             'currentAdminId' => session('user_id'),
         ]);
     }
@@ -287,16 +277,10 @@ class AdminController extends Controller
         ];
     }
 
-    public function updateFees(Request $request, string $username)
+    public function updateFees(Request $request)
     {
         if (!session('user_id') || session('role') !== 'admin') {
             return redirect()->route('login');
-        }
-
-        $admin = User::findOrFail(session('user_id'));
-
-        if ($username !== $admin->slug) {
-            return redirect()->route('admin.crud', ['username' => $admin->slug]);
         }
 
         $data = $request->validate([
@@ -312,27 +296,20 @@ class AdminController extends Controller
         AppSetting::setInteger('printbox_color_fee', (int) $data['printbox_color_fee']);
 
         return redirect()
-            ->route('admin.crud', ['username' => $admin->slug])
+            ->route('admin.crud', ['admin_tab' => 'fees'])
             ->with('status', 'Fee settings updated.');
     }
 
     /**
      * Promote: admin.crud.promote
      */
-    public function promoteAdmin(Request $request, string $username)
+    public function promoteAdmin(Request $request)
     {
         if (!session('user_id') || session('role') !== 'admin') {
             return redirect()->route('login');
         }
 
         $currentAdmin = User::findOrFail(session('user_id'));
-        $expectedSlug = $currentAdmin->slug;
-
-        if ($username !== $expectedSlug) {
-            return redirect()->route('admin.crud', [
-                'username' => $expectedSlug,
-            ] + $request->query());
-        }
 
         $data = $request->validate([
             'user_id'          => ['required', 'exists:users,id'],
@@ -354,27 +331,20 @@ class AdminController extends Controller
         $user->save();
 
         return redirect()
-            ->route('admin.crud', ['username' => $currentAdmin->slug])
+            ->route('admin.crud', ['admin_tab' => 'admins'])
             ->with('success', 'User promoted to admin.');
     }
 
     /**
      * Demote: admin.crud.demote
      */
-    public function demoteAdmin(Request $request, string $username)
+    public function demoteAdmin(Request $request)
     {
         if (!session('user_id') || session('role') !== 'admin') {
             return redirect()->route('login');
         }
 
         $currentAdmin = User::findOrFail(session('user_id'));
-        $expectedSlug = $currentAdmin->slug;
-
-        if ($username !== $expectedSlug) {
-            return redirect()->route('admin.crud', [
-                'username' => $expectedSlug,
-            ] + $request->query());
-        }
 
         $data = $request->validate([
             'user_id'          => ['required', 'exists:users,id'],
@@ -400,17 +370,13 @@ class AdminController extends Controller
         $user->save();
 
         return redirect()
-            ->route('admin.crud', ['username' => $currentAdmin->slug])
+            ->route('admin.crud', ['admin_tab' => 'admins'])
             ->with('success', 'Admin has been demoted to user.');
     }
 
-    public function suspendUser(Request $request, string $username, User $user)
+    public function suspendUser(Request $request, User $user)
     {
         $admin = User::findOrFail(session('user_id'));
-
-        if ($username !== $admin->slug) {
-            return redirect()->route('admin.crud', ['username' => $admin->slug]);
-        }
 
         if ($user->role === 'admin' || (int) $user->id === (int) $admin->id) {
             return back()->with('error', 'Admins cannot be suspended here.');
@@ -421,14 +387,8 @@ class AdminController extends Controller
         return back()->with('status', 'User suspended.');
     }
 
-    public function unsuspendUser(Request $request, string $username, User $user)
+    public function unsuspendUser(Request $request, User $user)
     {
-        $admin = User::findOrFail(session('user_id'));
-
-        if ($username !== $admin->slug) {
-            return redirect()->route('admin.crud', ['username' => $admin->slug]);
-        }
-
         $user->update(['suspended_at' => null]);
 
         return back()->with('status', 'User restored.');
@@ -488,7 +448,7 @@ class AdminController extends Controller
             ->with('status', 'Artwork updated.');
     }
 
-    public function resolveReport(Request $request, string $username, ArtworkReport $report)
+    public function resolveReport(Request $request, ArtworkReport $report)
     {
         $data = $request->validate([
             'status' => ['required', 'in:open,resolved,dismissed'],
@@ -525,13 +485,11 @@ class AdminController extends Controller
     }
 
     // ===== CATEGORY CRUD =====
-    public function storeCategory(Request $request, string $username)
+    public function storeCategory(Request $request)
     {
         if (!session('user_id') || session('role') !== 'admin') {
             return redirect()->route('login');
         }
-
-        $admin = User::findOrFail(session('user_id'));
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:categories,name'],
@@ -540,24 +498,22 @@ class AdminController extends Controller
         Category::create($data);
 
         return redirect()
-            ->route('admin.crud', ['username' => $admin->slug])
+            ->route('admin.crud', ['admin_tab' => 'categories'])
             ->with('status', 'Category created.');
     }
 
-    public function editCategory(string $username, Category $category)
+    public function editCategory(Category $category)
     {
         return view('admin_edit_category', [
             'category' => $category,
         ]);
     }
 
-    public function updateCategory(Request $request, string $username, Category $category)
+    public function updateCategory(Request $request, Category $category)
     {
         if (!session('user_id') || session('role') !== 'admin') {
             return redirect()->route('login');
         }
-
-        $admin = User::findOrFail(session('user_id'));
 
         $data = $request->validate([
             'name' => [
@@ -571,22 +527,20 @@ class AdminController extends Controller
         $category->update($data);
 
         return redirect()
-            ->route('admin.crud', ['username' => $admin->slug])
+            ->route('admin.crud', ['admin_tab' => 'categories'])
             ->with('status', 'Category updated.');
     }
 
-    public function destroyCategory(string $username, Category $category)
+    public function destroyCategory(Category $category)
     {
         if (!session('user_id') || session('role') !== 'admin') {
             return redirect()->route('login');
         }
 
-        $admin = User::findOrFail(session('user_id'));
-
         $category->delete();
 
         return redirect()
-            ->route('admin.crud', ['username' => $admin->slug])
+            ->route('admin.crud', ['admin_tab' => 'categories'])
             ->with('status', 'Category deleted.');
     }
 }

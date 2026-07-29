@@ -231,9 +231,10 @@
                 @endif
 
                 @if($isAdmin)
-                    <a href="{{ route('admin.crud.short') }}"
+                    <a href="{{ route('admin.crud') }}"
                     class="tb-pill-link d-inline-flex align-items-center"
                     style="gap:0.35rem;">
+                        <img src="{{ asset('images/admin_icon.png') }}" alt="Admin" style="height:16px;width:16px;opacity:0.85;">
                         Admin
                     </a>
                 @endif

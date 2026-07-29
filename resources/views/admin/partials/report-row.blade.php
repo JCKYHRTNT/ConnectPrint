@@ -1,4 +1,4 @@
-<form method="POST" action="{{ route('admin.reports.resolve', ['username' => $adminSlug, 'report' => $item->id]) }}" class="cp-admin-list-row" data-cursor-item="admin-report-{{ $item->id }}">
+<form method="POST" action="{{ route('admin.reports.resolve', ['report' => $item->id]) }}" class="cp-admin-list-row" data-cursor-item="admin-report-{{ $item->id }}">
     @csrf
     @method('PATCH')
     <div>

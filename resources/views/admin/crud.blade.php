@@ -3,9 +3,6 @@
 @section('title', 'Admin Management - ConnectPrint')
 
 @php
-    use Illuminate\Support\Str;
-
-    $adminSlug = Str::slug(session('name'));
     $adminTabs = [
         'admins' => 'Admin Management',
         'categories' => 'Category Management',
@@ -17,7 +14,7 @@
         $activeAdminTab = 'admins';
     }
 
-    $adminBaseRoute = route('admin.crud', ['username' => $adminSlug]);
+    $adminBaseRoute = route('admin.crud');
     $adminUserSearch = $adminUserSearch ?? request('admin_user_q');
     $adminCategorySearch = $adminCategorySearch ?? request('admin_category_q');
     $usersEndpoint = $adminBaseRoute . '?' . http_build_query(array_filter([
@@ -189,7 +186,7 @@
     <nav class="cp-admin-nav" aria-label="Admin navigation">
         @foreach($adminTabs as $tabKey => $tabLabel)
             <a
-                href="{{ route('admin.crud', ['username' => $adminSlug, 'admin_tab' => $tabKey]) }}"
+                href="{{ route('admin.crud', ['admin_tab' => $tabKey]) }}"
                 class="cp-admin-nav-link {{ $activeAdminTab === $tabKey ? 'is-active' : '' }}"
                 @if($activeAdminTab === $tabKey) aria-current="page" @endif
             >
@@ -245,7 +242,7 @@
         </div>
 
         <h3 class="mb-2" style="font-size:1rem;font-weight:700;">Users</h3>
-        <form method="GET" action="{{ route('admin.crud', ['username' => $adminSlug]) }}" class="cp-admin-filter-row mb-3" data-admin-filter-form>
+        <form method="GET" action="{{ route('admin.crud') }}" class="cp-admin-filter-row mb-3" data-admin-filter-form>
             <input type="hidden" name="admin_tab" value="admins">
             <div>
                 <label class="form-label" for="admin_user_q">Search</label>
@@ -259,7 +256,7 @@
                     data-admin-filter-input
                 >
             </div>
-            <a class="btn btn-outline-secondary" href="{{ route('admin.crud', ['username' => $adminSlug, 'admin_tab' => 'admins']) }}">Clear</a>
+            <a class="btn btn-outline-secondary" href="{{ route('admin.crud', ['admin_tab' => 'admins']) }}">Clear</a>
         </form>
         <div
             data-cursor-feed
@@ -283,7 +280,6 @@
                         @foreach($users as $item)
                             @include('admin.partials.user-row', [
                                 'item' => $item,
-                                'adminSlug' => $adminSlug,
                                 'currentAdminId' => session('user_id'),
                             ])
                         @endforeach
@@ -314,7 +310,7 @@
         </div>
 
         <h3 class="mb-2" style="font-size:1rem;font-weight:700;">Categories</h3>
-        <form method="GET" action="{{ route('admin.crud', ['username' => $adminSlug]) }}" class="cp-admin-filter-row mb-3" data-admin-filter-form>
+        <form method="GET" action="{{ route('admin.crud') }}" class="cp-admin-filter-row mb-3" data-admin-filter-form>
             <input type="hidden" name="admin_tab" value="categories">
             <div>
                 <label class="form-label" for="admin_category_q">Search</label>
@@ -328,7 +324,7 @@
                     data-admin-filter-input
                 >
             </div>
-            <a class="btn btn-outline-secondary" href="{{ route('admin.crud', ['username' => $adminSlug, 'admin_tab' => 'categories']) }}">Clear</a>
+            <a class="btn btn-outline-secondary" href="{{ route('admin.crud', ['admin_tab' => 'categories']) }}">Clear</a>
         </form>
         <div
             data-cursor-feed
@@ -347,7 +343,7 @@
                     </thead>
                     <tbody data-cursor-list>
                         @foreach($categories as $item)
-                            @include('admin.partials.category-row', ['item' => $item, 'adminSlug' => $adminSlug])
+                            @include('admin.partials.category-row', ['item' => $item])
                         @endforeach
                     </tbody>
                 </table>
@@ -365,19 +361,19 @@
         <div class="cp-admin-actions mb-3" aria-label="Report status filter">
             <a
                 class="btn btn-sm {{ $reportStatus === null ? 'btn-primary' : 'btn-outline-secondary' }}"
-                href="{{ route('admin.crud', ['username' => $adminSlug, 'admin_tab' => 'reports']) }}"
+                href="{{ route('admin.crud', ['admin_tab' => 'reports']) }}"
             >
                 All
             </a>
             <a
                 class="btn btn-sm {{ $reportStatus === 'open' ? 'btn-primary' : 'btn-outline-secondary' }}"
-                href="{{ route('admin.crud', ['username' => $adminSlug, 'admin_tab' => 'reports', 'report_status' => 'open']) }}"
+                href="{{ route('admin.crud', ['admin_tab' => 'reports', 'report_status' => 'open']) }}"
             >
                 Open
             </a>
             <a
                 class="btn btn-sm {{ $reportStatus === 'closed' ? 'btn-primary' : 'btn-outline-secondary' }}"
-                href="{{ route('admin.crud', ['username' => $adminSlug, 'admin_tab' => 'reports', 'report_status' => 'closed']) }}"
+                href="{{ route('admin.crud', ['admin_tab' => 'reports', 'report_status' => 'closed']) }}"
             >
                 Closed
             </a>
@@ -394,7 +390,7 @@
             >
                 <div data-cursor-list>
                     @foreach($reports as $item)
-                        @include('admin.partials.report-row', ['item' => $item, 'adminSlug' => $adminSlug])
+                        @include('admin.partials.report-row', ['item' => $item])
                     @endforeach
                 </div>
                 @include('partials.cursor-feed-footer')
@@ -405,7 +401,7 @@
     <section class="cp-admin-panel p-4 mb-3">
         <h2 class="mb-3" style="font-size:1.25rem;font-weight:700;">Fee Settings</h2>
 
-        <form method="POST" action="{{ route('admin.fees.update', ['username' => $adminSlug]) }}" class="cp-admin-fee-grid">
+        <form method="POST" action="{{ route('admin.fees.update') }}" class="cp-admin-fee-grid">
             @csrf
             <div>
                 <label class="form-label" for="application_fee">Application fee (Rp)</label>
@@ -433,7 +429,7 @@
 <div class="modal fade" id="modalCreateCategory" tabindex="-1" aria-labelledby="modalCreateCategoryLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" action="{{ route('admin.categories.store', ['username' => $adminSlug]) }}">
+            <form method="POST" action="{{ route('admin.categories.store') }}">
                 @csrf
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalCreateCategoryLabel">Add Category</h5>
@@ -500,7 +496,7 @@
 <div class="modal fade" id="modalCreateAdmin" tabindex="-1" aria-labelledby="modalCreateAdminLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" action="{{ route('admin.crud.promote', ['username' => $adminSlug]) }}">
+            <form method="POST" action="{{ route('admin.crud.promote') }}">
                 @csrf
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalCreateAdminLabel">Promote Admin</h5>
@@ -533,7 +529,7 @@
 <div class="modal fade" id="modalDemoteAdmin" tabindex="-1" aria-labelledby="modalDemoteAdminLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" action="{{ route('admin.crud.demote', ['username' => $adminSlug]) }}">
+            <form method="POST" action="{{ route('admin.crud.demote') }}">
                 @csrf
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalDemoteAdminLabel">Demote Admin</h5>
@@ -572,7 +568,7 @@
                 const form = document.getElementById('formEditCategory');
                 const input = document.getElementById('cat_edit_name');
 
-                form.action = "{{ url('/a/'.$adminSlug.'/categories') }}/" + button.getAttribute('data-id');
+                form.action = "{{ url('/admin/categories') }}/" + button.getAttribute('data-id');
                 input.value = button.getAttribute('data-name');
             });
         }
@@ -584,7 +580,7 @@
                 const form = document.getElementById('formDeleteCategory');
                 const text = document.getElementById('deleteCategoryText');
 
-                form.action = "{{ url('/a/'.$adminSlug.'/categories') }}/" + button.getAttribute('data-id');
+                form.action = "{{ url('/admin/categories') }}/" + button.getAttribute('data-id');
                 text.textContent = 'Delete category "' + button.getAttribute('data-name') + '"?';
             });
         }
