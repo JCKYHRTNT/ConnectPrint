@@ -432,13 +432,6 @@
             <button type="button" class="tb-btn-account tb-btn-account-delete" id="btnToggleDelete">Delete account</button>
             <a href="{{ route('logout') }}" class="tb-btn-account tb-btn-account-logout">Sign out</a>
 
-            @if($isAdmin)
-                @if($isAdminPage)
-                    <a href="{{ route('home.user') }}" class="tb-btn-account tb-btn-account-role">User mode</a>
-                @else
-                    <a href="{{ route('admin.user', ['username' => $userSlug]) }}" class="tb-btn-account tb-btn-account-role">Admin mode</a>
-                @endif
-            @endif
         </div>
 
         @php

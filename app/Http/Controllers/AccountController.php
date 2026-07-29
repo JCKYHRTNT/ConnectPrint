@@ -53,18 +53,10 @@ class AccountController extends Controller
         $expectedSlug = $user->slug;
 
         if ($username !== $expectedSlug) {
-            return redirect()->route('account.admin', ['username' => $expectedSlug]);
+            return redirect()->route('account', $request->query());
         }
 
-        if ($request->expectsJson() && $request->input('tab') === 'images') {
-            return response()->json($this->accountImagesCursorPayload($user, $request));
-        }
-
-        if ($request->expectsJson() && $request->input('tab') === 'history') {
-            return response()->json($this->accountHistoryCursorPayload($user, $request));
-        }
-
-        return view('account', $this->accountViewData($user, true, $request));
+        return redirect()->route('account', $request->query());
     }
 
     /**
@@ -80,10 +72,7 @@ class AccountController extends Controller
         $expectedSlug = $user->slug;
 
         if ($username !== null && $username !== $expectedSlug) {
-            $baseRoute = $request->routeIs('account.admin.update') ? 'account.admin' : 'account';
-            $routeParams = $baseRoute === 'account.admin' ? ['username' => $expectedSlug] : [];
-
-            return redirect()->route($baseRoute, $routeParams);
+            return redirect()->route('account');
         }
 
         $data = $request->validate([
@@ -103,13 +92,8 @@ class AccountController extends Controller
         // Update session name
         session(['name' => $user->name]);
 
-        $newSlug   = $user->slug;
-        $baseRoute = $request->routeIs('account.admin.update') ? 'account.admin' : 'account';
-
-        $routeParams = $baseRoute === 'account.admin' ? ['username' => $newSlug] : [];
-
         return redirect()
-            ->route($baseRoute, $routeParams)
+            ->route('account')
             ->with('success', 'Account updated.');
     }
 
@@ -126,11 +110,7 @@ class AccountController extends Controller
         $expectedSlug = $user->slug;
 
         if ($username !== null && $username !== $expectedSlug) {
-            $baseRoute = $request->routeIs('account.admin.delete') ? 'account.admin' : 'account';
-
-            $routeParams = $baseRoute === 'account.admin' ? ['username' => $expectedSlug] : [];
-
-            return redirect()->route($baseRoute, $routeParams);
+            return redirect()->route('account');
         }
 
         $data = $request->validate([

@@ -66,32 +66,20 @@
             $userSlug = $loggedIn ? Str::slug(session('name')) : null;
             $isAdmin  = $loggedIn && session('role') === 'admin';
 
-            $onAdminContext = request()->is('a/*');
-            $onUserContext  = request()->is('u/*');
             $selectedCategories = collect((array) request('category'))
                 ->filter(fn ($id) => $id !== null && $id !== '')
                 ->map(fn ($id) => (int) $id)
                 ->all();
             $availableCategories = $headerCategories ?? ($categories ?? collect());
 
-            if ($onAdminContext && $loggedIn && $userSlug) {
-                $searchBaseUrl = url('/a/'.$userSlug);
-            } elseif ($loggedIn) {
+            if ($loggedIn) {
                 $searchBaseUrl = route('home.user');
             } else {
                 $searchBaseUrl = url('/');
             }
 
             if ($loggedIn && $userSlug) {
-                if ($onUserContext) {
-                    $logoHref = route('home.user');
-                } elseif ($onAdminContext) {
-                    $logoHref = route('admin.user', ['username' => $userSlug]);
-                } else {
-                    $logoHref = $isAdmin
-                        ? route('admin.user', ['username' => $userSlug])
-                        : route('home.user');
-                }
+                $logoHref = route('home.user');
             } else {
                 // guest
                 $logoHref = route('home');
@@ -101,9 +89,9 @@
         {{-- Logo --}}
         <a href="{{ $logoHref }}" class="d-inline-flex align-items-center" style="gap:0.5rem;">
             <img
-                src="{{ asset('images/placeholders/blank-logo.svg') }}"
+                src="{{ asset('images/Logo ConnectPrint.png') }}"
                 alt="ConnectPrint"
-                style="height:42px;width:auto;border-radius:0.4rem;object-fit:cover;background:#0f172a;"
+                style="height:42px;width:auto;object-fit:contain;"
             >
         </a>
 
@@ -145,7 +133,6 @@
                     $showFilter = request()->routeIs(
                         'home',
                         'home.user',
-                        'admin.user',
                         'cart'
                     );
 
@@ -211,37 +198,12 @@
 
                 {{-- HOME --}}
                 @if($loggedIn)
-                    @if($onAdminContext)
-                        <a href="{{ route('admin.user', ['username' => $userSlug]) }}"
-                        class="tb-pill-link d-inline-flex align-items-center"
-                        style="gap:0.35rem;">
-                            <img src="{{ asset('images/home_icon.png') }}" alt="Home" style="height:16px;width:16px;opacity:0.85;">
-                            Home
-                        </a>
-                    @elseif($onUserContext)
-                        <a href="{{ route('home.user') }}"
-                        class="tb-pill-link d-inline-flex align-items-center"
-                        style="gap:0.35rem;">
-                            <img src="{{ asset('images/home_icon.png') }}" alt="Home" style="height:16px;width:16px;opacity:0.85;">
-                            Home
-                        </a>
-                    @else
-                        @if($isAdmin)
-                            <a href="{{ route('admin.user', ['username' => $userSlug]) }}"
-                            class="tb-pill-link d-inline-flex align-items-center"
-                            style="gap:0.35rem;">
-                                <img src="{{ asset('images/home_icon.png') }}" alt="Home" style="height:16px;width:16px;opacity:0.85;">
-                                Home
-                            </a>
-                        @else
-                            <a href="{{ route('home.user') }}"
-                            class="tb-pill-link d-inline-flex align-items-center"
-                            style="gap:0.35rem;">
-                                <img src="{{ asset('images/home_icon.png') }}" alt="Home" style="height:16px;width:16px;opacity:0.85;">
-                                Home
-                            </a>
-                        @endif
-                    @endif
+                    <a href="{{ route('home.user') }}"
+                    class="tb-pill-link d-inline-flex align-items-center"
+                    style="gap:0.35rem;">
+                        <img src="{{ asset('images/home_icon.png') }}" alt="Home" style="height:16px;width:16px;opacity:0.85;">
+                        Home
+                    </a>
                 @else
                     <a href="{{ route('home') }}"
                     class="tb-pill-link d-inline-flex align-items-center"
@@ -278,21 +240,12 @@
 
                 {{-- ACCOUNT / LOGIN --}}
                 @if($loggedIn)
-                    @if($onAdminContext)
-                        <a href="{{ route('account.admin', ['username' => $userSlug]) }}"
-                        class="tb-pill-link d-inline-flex align-items-center"
-                        style="gap:0.35rem;">
-                            <img src="{{ asset('images/account_icon.png') }}" alt="Account" style="height:16px;width:16px;opacity:0.85;">
-                            Profile
-                        </a>
-                    @else
-                        <a href="{{ route('account') }}"
-                        class="tb-pill-link d-inline-flex align-items-center"
-                        style="gap:0.35rem;">
-                            <img src="{{ asset('images/account_icon.png') }}" alt="Account" style="height:16px;width:16px;opacity:0.85;">
-                            Profile
-                        </a>
-                    @endif
+                    <a href="{{ route('account') }}"
+                    class="tb-pill-link d-inline-flex align-items-center"
+                    style="gap:0.35rem;">
+                        <img src="{{ asset('images/account_icon.png') }}" alt="Account" style="height:16px;width:16px;opacity:0.85;">
+                        Profile
+                    </a>
                 @else
                     <a href="{{ route('login') }}"
                     class="tb-pill-link d-inline-flex align-items-center"

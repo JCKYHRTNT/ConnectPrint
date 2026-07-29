@@ -28,6 +28,10 @@ class LoginController extends Controller
             return back()->with('error', 'Invalid email or password.');
         }
 
+        if ($user->suspended_at) {
+            return back()->with('error', 'This account is suspended.');
+        }
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
@@ -37,15 +41,9 @@ class LoginController extends Controller
             'role'    => $user->role,
         ]);
 
-        if ($user->role === 'admin') {
-            return redirect()
-                ->route('admin.user', ['username' => $user->slug])
-                ->with('success', 'Logged in as admin.');
-        }
-
         return redirect()
             ->route('home.user')
-            ->with('success', 'Logged in.');
+            ->with('success', $user->role === 'admin' ? 'Logged in as admin.' : 'Logged in.');
     }
 
     // SHOW REGISTER FORM

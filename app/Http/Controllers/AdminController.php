@@ -139,29 +139,152 @@ class AdminController extends Controller
             ] + $request->query());
         }
 
+        if ($request->expectsJson()) {
+            return response()->json($this->adminCursorPayload($request, $username));
+        }
+
+        $activeAdminTab = $request->input('admin_tab', 'admins');
+        if (! in_array($activeAdminTab, ['admins', 'categories', 'reports', 'fees'], true)) {
+            $activeAdminTab = 'admins';
+        }
+        $reportStatus = $this->normalizeReportStatus($request);
+        $adminUserSearch = trim((string) $request->input('admin_user_q', ''));
+        $adminCategorySearch = trim((string) $request->input('admin_category_q', ''));
+
         $artworkCount  = Artwork::count();
         $categoryCount = Category::count();
         $adminCount    = User::where('role', 'admin')->count();
+        $userCount     = User::count();
+        $suspendedCount = User::whereNotNull('suspended_at')->count();
+        $openReportCount = ArtworkReport::where('status', 'open')->count();
 
         // Users that can be promoted to admin
-        $eligibleUsers = User::where('role', '!=', 'admin')->get();
+        $eligibleUsers = User::where('role', '!=', 'admin')
+            ->whereNull('suspended_at')
+            ->orderBy('name')
+            ->get();
 
         // Admins that can be demoted
         $demotableAdmins = User::where('role', 'admin')
             ->where('id', '!=', session('user_id'))
+            ->orderBy('name')
             ->get();
 
         return view('admin.crud', [
             'artworkCount'    => $artworkCount,
             'categoryCount'   => $categoryCount,
             'adminCount'      => $adminCount,
-            'categories'      => Category::orderBy('id')->get(),
+            'userCount'       => $userCount,
+            'suspendedCount'  => $suspendedCount,
+            'openReportCount' => $openReportCount,
+            'activeAdminTab'  => $activeAdminTab,
+            'users'           => $this->adminUsersQuery($adminUserSearch)->cursorPaginate(12)->withQueryString(),
+            'categories'      => $this->adminCategoriesQuery($adminCategorySearch)->cursorPaginate(12)->withQueryString(),
+            'reports'         => $this->adminReportsQuery($reportStatus)->cursorPaginate(10)->withQueryString(),
+            'reportStatus'    => $reportStatus,
+            'adminUserSearch' => $adminUserSearch,
+            'adminCategorySearch' => $adminCategorySearch,
             'eligibleUsers'   => $eligibleUsers,
             'demotableAdmins' => $demotableAdmins,
             'applicationFee' => AppSetting::integer('application_fee', AppSetting::DEFAULT_APPLICATION_FEE),
             'printboxRates' => AppSetting::printboxRates(),
-            'reports' => ArtworkReport::with(['artwork', 'reporter'])->where('status', 'open')->latest()->get(),
         ]);
+    }
+
+    private function adminUsersQuery(?string $search = null)
+    {
+        return User::query()
+            ->when($search, function ($query, string $search) {
+                $like = '%' . strtolower($search) . '%';
+
+                $query->where(function ($query) use ($like, $search) {
+                    $query->whereRaw('LOWER(name) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(email) LIKE ?', [$like]);
+
+                    if (ctype_digit($search)) {
+                        $query->orWhere('id', (int) $search);
+                    }
+                });
+            })
+            ->orderBy('id');
+    }
+
+    private function adminCategoriesQuery(?string $search = null)
+    {
+        return Category::query()
+            ->when($search, function ($query, string $search) {
+                $like = '%' . strtolower($search) . '%';
+
+                $query->where(function ($query) use ($like, $search) {
+                    $query->whereRaw('LOWER(name) LIKE ?', [$like]);
+
+                    if (ctype_digit($search)) {
+                        $query->orWhere('id', (int) $search);
+                    }
+                });
+            })
+            ->orderBy('id');
+    }
+
+    private function adminReportsQuery(?string $status = null)
+    {
+        $query = ArtworkReport::with(['artwork', 'reporter']);
+
+        if ($status === 'open') {
+            $query->where('status', 'open');
+        } elseif ($status === 'closed') {
+            $query->where('status', '!=', 'open');
+        }
+
+        return $query
+            ->select('artwork_reports.*')
+            ->selectRaw("CASE WHEN status = 'open' THEN 0 ELSE 1 END as open_sort")
+            ->orderBy('open_sort')
+            ->orderByDesc('id');
+    }
+
+    private function normalizeReportStatus(Request $request): ?string
+    {
+        $status = $request->input('report_status');
+
+        return in_array($status, ['open', 'closed'], true) ? $status : null;
+    }
+
+    private function adminCursorPayload(Request $request, string $username): array
+    {
+        $section = $request->input('admin_tab', 'admins');
+
+        if ($section === 'categories') {
+            $items = $this->adminCategoriesQuery(trim((string) $request->input('admin_category_q', '')))->cursorPaginate(12)->withQueryString();
+
+            return $this->cursorPayload($items, 'admin.partials.category-row', ['adminSlug' => $username]);
+        }
+
+        if ($section === 'reports') {
+            $items = $this->adminReportsQuery($this->normalizeReportStatus($request))->cursorPaginate(10)->withQueryString();
+
+            return $this->cursorPayload($items, 'admin.partials.report-row', ['adminSlug' => $username]);
+        }
+
+        $items = $this->adminUsersQuery(trim((string) $request->input('admin_user_q', '')))->cursorPaginate(12)->withQueryString();
+
+        return $this->cursorPayload($items, 'admin.partials.user-row', [
+            'adminSlug' => $username,
+            'currentAdminId' => session('user_id'),
+        ]);
+    }
+
+    private function cursorPayload($paginator, string $partial, array $extra = []): array
+    {
+        return [
+            'data' => collect($paginator->items())
+                ->map(fn ($item) => view($partial, array_merge(['item' => $item], $extra))->render())
+                ->values()
+                ->all(),
+            'next_cursor' => $paginator->nextCursor()?->encode(),
+            'has_more' => $paginator->hasMorePages(),
+            'total' => null,
+        ];
     }
 
     public function updateFees(Request $request, string $username)
@@ -281,6 +404,36 @@ class AdminController extends Controller
             ->with('success', 'Admin has been demoted to user.');
     }
 
+    public function suspendUser(Request $request, string $username, User $user)
+    {
+        $admin = User::findOrFail(session('user_id'));
+
+        if ($username !== $admin->slug) {
+            return redirect()->route('admin.crud', ['username' => $admin->slug]);
+        }
+
+        if ($user->role === 'admin' || (int) $user->id === (int) $admin->id) {
+            return back()->with('error', 'Admins cannot be suspended here.');
+        }
+
+        $user->update(['suspended_at' => now()]);
+
+        return back()->with('status', 'User suspended.');
+    }
+
+    public function unsuspendUser(Request $request, string $username, User $user)
+    {
+        $admin = User::findOrFail(session('user_id'));
+
+        if ($username !== $admin->slug) {
+            return redirect()->route('admin.crud', ['username' => $admin->slug]);
+        }
+
+        $user->update(['suspended_at' => null]);
+
+        return back()->with('status', 'User restored.');
+    }
+
     // ===== ARTWORK CRUD =====
     public function storeArtwork(Request $request, string $username)
     {
@@ -338,7 +491,7 @@ class AdminController extends Controller
     public function resolveReport(Request $request, string $username, ArtworkReport $report)
     {
         $data = $request->validate([
-            'status' => ['required', 'in:resolved,dismissed'],
+            'status' => ['required', 'in:open,resolved,dismissed'],
             'archive_artwork' => ['nullable', 'boolean'],
         ]);
 

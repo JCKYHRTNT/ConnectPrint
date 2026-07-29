@@ -139,6 +139,14 @@ Route::middleware('admin')->group(function () {
     Route::post('/a/{username}/admin/fees', [AdminController::class, 'updateFees'])
         ->name('admin.fees.update');
 
+    Route::patch('/a/{username}/admin/users/{user}/suspend', [AdminController::class, 'suspendUser'])
+        ->whereNumber('user')
+        ->name('admin.users.suspend');
+
+    Route::patch('/a/{username}/admin/users/{user}/unsuspend', [AdminController::class, 'unsuspendUser'])
+        ->whereNumber('user')
+        ->name('admin.users.unsuspend');
+
     // ADMIN ARTWORK DETAIL
     Route::get('/a/{username}/artworks/{artwork}', [AdminController::class, 'artworkDetail'])
         ->whereNumber('artwork')
